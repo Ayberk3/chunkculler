@@ -1,0 +1,26 @@
+# SubChunkCuller configuration
+
+# How many 16-block sub-chunk sections below the player's current section
+# stay visible to their client. Anything further below is stripped from
+# the outgoing chunk packet entirely - never sent, not just hidden
+# client-side, so packet sniffers/ESP get nothing to render.
+sub-chunks-below: 2
+
+# Worlds this system is active in. Add every world you want protected
+# (world names, not UUIDs).
+enabled-worlds:
+  - world
+
+# Logs interception/culling metrics to console (per chunk packet, per
+# player). Leave off in production - this runs on the packet thread for
+# every chunk packet sent to every player.
+debug-mode: false
+
+# Radius, in chunks, around a player to force a chunk resend when they
+# cross a sub-chunk section boundary, so newly-dug-into sections load in
+# instead of staying hidden until the client naturally re-requests them.
+refresh-radius: 3
+
+# Minimum milliseconds between forced chunk refreshes for the same player,
+# to avoid flooding the network thread while a player digs straight down.
+refresh-cooldown-ms: 250

@@ -1,0 +1,10 @@
+name: SubChunkCuller
+version: '1.0.0'
+main: dev.ayberk.subchunkculler.Main
+api-version: '1.20'
+depend: [packetevents]
+author: Ayberk
+description: >
+  Vertical sub-chunk culling - strips chunk sections below a configurable
+  cutoff from outgoing chunk packets so ESP/X-Ray clients never receive the
+  block/tile-entity data for underground bases in the first place.
