@@ -24,3 +24,8 @@ refresh-radius: 3
 # Minimum milliseconds between forced chunk refreshes for the same player,
 # to avoid flooding the network thread while a player digs straight down.
 refresh-cooldown-ms: 250
+
+# The highest Y level (block Y) the cutoff point can reach. When the player
+# is above this level, the normal surface is never culled. Only sections 
+# below this level will start culling based on the player's relative position.
+absolute-cutoff-y: 0
