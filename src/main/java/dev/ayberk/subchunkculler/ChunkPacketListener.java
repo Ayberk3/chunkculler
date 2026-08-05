@@ -103,7 +103,10 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             return;
         }
 
-        final int cutoffSection = playerSectionY - config.getSubChunksBelow();
+        final int cutoffSection = Math.min(
+        playerSectionY - config.getSubChunksBelow(),
+        config.getAbsoluteCutoffSection()
+);
 
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
         Column column = wrapper.getColumn();
