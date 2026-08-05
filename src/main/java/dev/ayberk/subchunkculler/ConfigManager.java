@@ -25,6 +25,8 @@ public final class ConfigManager implements Listener {
     private final Main plugin;
 
     private volatile int subChunksBelow;
+    // CLAUDE'UN EKLETTİĞİ YENİ ALAN BURADA
+    private volatile int absoluteCutoffSection;
     private volatile boolean debugMode;
     private volatile int refreshRadius;
     private volatile long refreshCooldownMs;
@@ -44,6 +46,9 @@ public final class ConfigManager implements Listener {
         FileConfiguration cfg = plugin.getConfig();
 
         this.subChunksBelow = Math.max(0, cfg.getInt("sub-chunks-below", 2));
+        // CLAUDE'UN EKLETTİĞİ AYARI OKUMA KISMI BURADA
+        this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
+        
         this.debugMode = cfg.getBoolean("debug-mode", false);
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
@@ -95,6 +100,11 @@ public final class ConfigManager implements Listener {
 
     public int getSubChunksBelow() {
         return subChunksBelow;
+    }
+
+    // CLAUDE'UN EKLETTİĞİ GETTER METODU BURADA
+    public int getAbsoluteCutoffSection() {
+        return absoluteCutoffSection;
     }
 
     public boolean isDebugMode() {
