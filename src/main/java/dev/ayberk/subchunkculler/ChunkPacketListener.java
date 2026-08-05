@@ -8,6 +8,7 @@ import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
 import com.github.retrooper.packetevents.protocol.world.chunk.TileEntity;
+import com.github.retrooper.packetevents.protocol.world.biome.Biomes;
 import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import org.bukkit.entity.Player;
@@ -30,16 +31,19 @@ import java.util.logging.Logger;
  * chunk/world state through Bukkit.
  *
  * <p><b>Verified against PacketEvents {@code v2.13.0} source</b> (the version
- * you're pinned to). Two things that are NOT true in this version and would
+ * you're pinned to). Things that are NOT true in this version and would
  * silently break the plugin if assumed otherwise:
  * <ul>
  *   <li>Setting a {@code BaseChunk[]} slot to {@code null} is only safe pre-1.18.
  *       On 1.18+, {@code WrapperPlayServerChunkData#write()} unconditionally
  *       casts every slot to {@code Chunk_v1_18} and calls its static
  *       {@code write(...)}, which dereferences the section directly - a null
- *       slot throws an NPE during serialization (this matches a real upstream
- *       bug report about players getting kicked on empty chunks). We build an
- *       actual empty {@code Chunk_v1_18} instead of using null.</li>
+ *       slot throws an NPE during serialization.</li>
+ *   <li>{@code new Chunk_v1_18(version)} alone is NOT a safe "empty" section -
+ *       its block AND biome palettes start with ZERO registered entries,
+ *       which crashes the client the instant it tries to resolve any index
+ *       against an empty palette. Both palettes need at least one real
+ *       entry registered - see {@link #buildEmptySection}.</li>
  *   <li>{@code Column} has no {@code setChunks()}/{@code setTileEntities()}.
  *       {@code getChunks()} returns the live backing array, so mutating its
  *       elements in place works with no setter needed. {@code tileEntities}
@@ -118,10 +122,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             int actualSectionY = minSection + i;
             if (actualSectionY < cutoffSection && !isEmptySection(chunks[i])) {
                 // IMPORTANT: null is NOT safe here on 1.18+ - see class javadoc.
-                // A real empty Chunk_v1_18 (blockCount 0, default air palette)
-                // serializes to zero block/tile-entity data, same end result,
-                // without crashing WrapperPlayServerChunkData#write().
-                chunks[i] = new Chunk_v1_18(clientVersion);
+                chunks[i] = buildEmptySection(clientVersion);
                 strippedCount++;
             }
         }
@@ -142,6 +143,29 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         // Already-air sections (chunk == null pre-1.18, or already stripped by
         // us on a previous pass) don't need to be touched again.
         return chunk == null;
+    }
+
+    /**
+     * Builds a genuinely valid empty section - not just "blockCount 0", but
+     * with both its block palette AND its biome palette populated with at
+     * least one real entry.
+     *
+     * <p>{@code new Chunk_v1_18(version)} alone creates block/biome palettes
+     * via {@code PaletteType.create()}, which returns a {@code ListPalette}
+     * with ZERO registered entries. That serializes fine on the wire
+     * (palette length 0, an all-zero index array) but crashes the client the
+     * instant it tries to resolve any index against zero palette entries.
+     * One {@code set(...)} call per palette registers a real entry at
+     * palette-index 0; since the backing storage defaults to all-zero
+     * indices anyway, that single write makes every position in the
+     * 16x16x16 section (and every biome cell) resolve correctly instead of
+     * dereferencing nothing.
+     */
+    private BaseChunk buildEmptySection(ClientVersion clientVersion) {
+        Chunk_v1_18 section = new Chunk_v1_18(clientVersion);
+        section.set(0, 0, 0, 0); // global state id 0 is always air
+        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+        return section;
     }
 
     /**
