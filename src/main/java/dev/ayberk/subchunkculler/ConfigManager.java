@@ -22,10 +22,6 @@ public final class ConfigManager implements Listener {
     private volatile int refreshRadius;
     private volatile long refreshCooldownMs;
     private volatile int absoluteCutoffSection;
-    private volatile boolean hideEntities;
-    private volatile long entityCheckIntervalTicks;
-    private volatile double entityScanRadius;
-    private volatile boolean hidePlayersToo;
     private volatile Set<String> enabledWorlds = Collections.emptySet();
 
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
@@ -44,10 +40,6 @@ public final class ConfigManager implements Listener {
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
         this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
-        this.hideEntities = cfg.getBoolean("hide-entities", true);
-        this.entityCheckIntervalTicks = Math.max(1L, cfg.getLong("entity-check-interval-ticks", 10L));
-        this.entityScanRadius = Math.max(8.0, cfg.getDouble("entity-scan-radius", 64.0));
-        this.hidePlayersToo = cfg.getBoolean("hide-players-too", false);
 
         Set<String> worlds = new HashSet<>(cfg.getStringList("enabled-worlds"));
         if (worlds.isEmpty()) {
@@ -110,21 +102,5 @@ public final class ConfigManager implements Listener {
 
     public int getAbsoluteCutoffSection() {
         return absoluteCutoffSection;
-    }
-
-    public boolean isHideEntitiesEnabled() {
-        return hideEntities;
-    }
-
-    public long getEntityCheckIntervalTicks() {
-        return entityCheckIntervalTicks;
-    }
-
-    public double getEntityScanRadius() {
-        return entityScanRadius;
-    }
-
-    public boolean isHidePlayersToo() {
-        return hidePlayersToo;
     }
 }
