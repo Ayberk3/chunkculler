@@ -13,27 +13,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Loads config.yml and caches everything the packet-thread listener needs as
- * plain, already-resolved, thread-safe values. ChunkPacketListener must never
- * touch the Bukkit API directly while processing a packet off the main
- * thread - this class is where that resolution happens instead, safely, on
- * the main thread (config load, world load/unload events).
- */
 public final class ConfigManager implements Listener {
 
     private final Main plugin;
 
     private volatile int subChunksBelow;
-    // CLAUDE'UN EKLETTİĞİ YENİ ALAN BURADA
-    private volatile int absoluteCutoffSection;
     private volatile boolean debugMode;
     private volatile int refreshRadius;
     private volatile long refreshCooldownMs;
+    private volatile int absoluteCutoffSection;
+    private volatile boolean hideEntities;
+    private volatile long entityCheckIntervalTicks;
+    private volatile double entityScanRadius;
+    private volatile boolean hidePlayersToo;
     private volatile Set<String> enabledWorlds = Collections.emptySet();
 
-    // World name -> lowest section index (world.getMinHeight() >> 4).
-    // Resolved on the main thread whenever a world loads; read on the packet thread.
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
 
     public ConfigManager(Main plugin) {
@@ -46,12 +40,14 @@ public final class ConfigManager implements Listener {
         FileConfiguration cfg = plugin.getConfig();
 
         this.subChunksBelow = Math.max(0, cfg.getInt("sub-chunks-below", 2));
-        // CLAUDE'UN EKLETTİĞİ AYARI OKUMA KISMI BURADA
-        this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
-        
         this.debugMode = cfg.getBoolean("debug-mode", false);
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
+        this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
+        this.hideEntities = cfg.getBoolean("hide-entities", true);
+        this.entityCheckIntervalTicks = Math.max(1L, cfg.getLong("entity-check-interval-ticks", 10L));
+        this.entityScanRadius = Math.max(8.0, cfg.getDouble("entity-scan-radius", 64.0));
+        this.hidePlayersToo = cfg.getBoolean("hide-players-too", false);
 
         Set<String> worlds = new HashSet<>(cfg.getStringList("enabled-worlds"));
         if (worlds.isEmpty()) {
@@ -87,12 +83,6 @@ public final class ConfigManager implements Listener {
         return enabledWorlds.contains(worldName);
     }
 
-    /**
-     * Lowest section index for a world (e.g. -4 for an overworld with
-     * min-height -64, 0 for the Nether/End). Falls back to -4 if the world
-     * hasn't been cached yet - safer to assume overworld-shaped than to skip
-     * culling for that packet entirely.
-     */
     public int getMinSection(String worldName) {
         Integer cached = worldMinSection.get(worldName);
         return cached != null ? cached : -4;
@@ -100,11 +90,6 @@ public final class ConfigManager implements Listener {
 
     public int getSubChunksBelow() {
         return subChunksBelow;
-    }
-
-    // CLAUDE'UN EKLETTİĞİ GETTER METODU BURADA
-    public int getAbsoluteCutoffSection() {
-        return absoluteCutoffSection;
     }
 
     public boolean isDebugMode() {
@@ -117,5 +102,29 @@ public final class ConfigManager implements Listener {
 
     public long getRefreshCooldownMs() {
         return refreshCooldownMs;
+    }
+
+    public int computeCutoffSection(int playerSectionY) {
+        return Math.min(playerSectionY - subChunksBelow, absoluteCutoffSection);
+    }
+
+    public int getAbsoluteCutoffSection() {
+        return absoluteCutoffSection;
+    }
+
+    public boolean isHideEntitiesEnabled() {
+        return hideEntities;
+    }
+
+    public long getEntityCheckIntervalTicks() {
+        return entityCheckIntervalTicks;
+    }
+
+    public double getEntityScanRadius() {
+        return entityScanRadius;
+    }
+
+    public boolean isHidePlayersToo() {
+        return hidePlayersToo;
     }
 }
