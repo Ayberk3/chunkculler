@@ -29,3 +29,23 @@ refresh-cooldown-ms: 250
 # is above this level, the normal surface is never culled. Only sections 
 # below this level will start culling based on the player's relative position.
 absolute-cutoff-y: 0
+
+# Hides mobs/entities below the cutoff from each player too, not just
+# terrain - otherwise a mob-ESP/radar cheat can still see what's
+# underground even though the blocks are already hidden.
+hide-entities: true
+
+# How often (in ticks, 20 = 1 second) to re-check nearby entities per
+# player and update who can see what. Higher = lighter on the server,
+# but entities take slightly longer to appear/disappear as they cross
+# the cutoff.
+entity-check-interval-ticks: 20
+
+# Radius (in blocks) around each player to scan for entities to hide/show.
+# Should cover your mob tracking range - smaller means less work per check.
+entity-scan-radius: 48
+
+# Also hide other PLAYERS below the cutoff, not just mobs. Off by default -
+# can be confusing in normal multiplayer (e.g. two players mining near
+# each other at different depths).
+hide-players-too: false
