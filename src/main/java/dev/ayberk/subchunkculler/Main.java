@@ -11,23 +11,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class Main extends JavaPlugin {
 
-    /**
-     * Section-Y index (blockY >> 4) each online player was in as of their last
-     * movement tick. Written ONLY on the main thread (PlayerMoveListener).
-     * Read ONLY on the PacketEvents packet thread (ChunkPacketListener).
-     * This map is the entire bridge between the two threads - the packet
-     * listener never touches world/location Bukkit API itself.
-     */
     public static final Map<UUID, Integer> PLAYER_SECTION_Y = new ConcurrentHashMap<>();
-
-    /** Last forced-refresh timestamp per player, for cooldown throttling. */
     public static final Map<UUID, Long> LAST_REFRESH = new ConcurrentHashMap<>();
 
     private ConfigManager configManager;
 
     @Override
     public void onLoad() {
-        // PacketEvents must be built and loaded before its Netty injector runs.
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
         PacketEvents.getAPI().getSettings()
                 .checkForUpdates(false)
@@ -49,7 +39,10 @@ public final class Main extends JavaPlugin {
         getServer().getPluginManager()
                 .registerEvents(new PlayerMoveListener(this, configManager), this);
 
-        // Seed the section cache for anyone already online (covers /reload).
+        EntityVisibilityTask entityVisibilityTask = new EntityVisibilityTask(this, configManager);
+        getServer().getPluginManager().registerEvents(entityVisibilityTask, this);
+        entityVisibilityTask.runTaskTimer(this, 20L, configManager.getEntityCheckIntervalTicks());
+
         for (Player player : getServer().getOnlinePlayers()) {
             PLAYER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
