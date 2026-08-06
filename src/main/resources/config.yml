@@ -1,9 +1,7 @@
-# SubChunkCuller configuration
-
 # How many 16-block sub-chunk sections below the player's current section
 # stay visible to their client. Anything further below is stripped from
 # the outgoing chunk packet entirely - never sent, not just hidden
-# client-side, so packet sniffers/ESP get nothing to render.
+# client-side.
 sub-chunks-below: 2
 
 # Worlds this system is active in. Add every world you want protected
@@ -11,41 +9,22 @@ sub-chunks-below: 2
 enabled-worlds:
   - world
 
-# Logs interception/culling metrics to console (per chunk packet, per
-# player). Leave off in production - this runs on the packet thread for
-# every chunk packet sent to every player.
+# Hard floor for the cutoff, in blocks. Whichever is HIGHER (more
+# restrictive) of "N sections below the player" or this value wins - so a
+# player flying/standing high up never has ordinary surface terrain hidden
+# just because they're technically more than N sections above bedrock.
+# As the player approaches/goes below this Y, terrain below them starts
+# unhiding normally based on sub-chunks-below.
+absolute-cutoff-y: 0
+
+# Logs interception/culling metrics to console. Leave off in production -
+# this runs on the packet thread for every chunk packet sent.
 debug-mode: false
 
 # Radius, in chunks, around a player to force a chunk resend when they
-# cross a sub-chunk section boundary, so newly-dug-into sections load in
-# instead of staying hidden until the client naturally re-requests them.
+# cross a sub-chunk section boundary, so newly-dug-into sections load in.
 refresh-radius: 3
 
 # Minimum milliseconds between forced chunk refreshes for the same player,
 # to avoid flooding the network thread while a player digs straight down.
 refresh-cooldown-ms: 250
-
-# The highest Y level (block Y) the cutoff point can reach. When the player
-# is above this level, the normal surface is never culled. Only sections 
-# below this level will start culling based on the player's relative position.
-absolute-cutoff-y: 0
-
-# Hides mobs/entities below the cutoff from each player too, not just
-# terrain - otherwise a mob-ESP/radar cheat can still see what's
-# underground even though the blocks are already hidden.
-hide-entities: true
-
-# How often (in ticks, 20 = 1 second) to re-check nearby entities per
-# player and update who can see what. Higher = lighter on the server,
-# but entities take slightly longer to appear/disappear as they cross
-# the cutoff.
-entity-check-interval-ticks: 20
-
-# Radius (in blocks) around each player to scan for entities to hide/show.
-# Should cover your mob tracking range - smaller means less work per check.
-entity-scan-radius: 48
-
-# Also hide other PLAYERS below the cutoff, not just mobs. Off by default -
-# can be confusing in normal multiplayer (e.g. two players mining near
-# each other at different depths).
-hide-players-too: false
