@@ -39,10 +39,6 @@ public final class Main extends JavaPlugin {
         getServer().getPluginManager()
                 .registerEvents(new PlayerMoveListener(this, configManager), this);
 
-        EntityVisibilityTask entityVisibilityTask = new EntityVisibilityTask(this, configManager);
-        getServer().getPluginManager().registerEvents(entityVisibilityTask, this);
-        entityVisibilityTask.runTaskTimer(this, 20L, configManager.getEntityCheckIntervalTicks());
-
         for (Player player : getServer().getOnlinePlayers()) {
             PLAYER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
