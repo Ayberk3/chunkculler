@@ -28,3 +28,20 @@ refresh-radius: 3
 # Minimum milliseconds between forced chunk refreshes for the same player,
 # to avoid flooding the network thread while a player digs straight down.
 refresh-cooldown-ms: 250
+
+# --- Line of Sight based player-entity hiding ---
+# Applies EVERYWHERE (not just below the sub-chunk cutoff) - hides a player
+# from another player's client if solid terrain blocks the line between
+# them, or they're farther apart than max-distance. This is what stops
+# ESP/wallhack clients from reading coordinates of players inside surface
+# bases through walls.
+line-of-sight:
+  enabled: true
+  # Beyond this distance we don't bother - Paper's own entity tracking range
+  # already stops sending packets, so raycasting further is wasted work.
+  max-distance: 48.0
+  # How often (in ticks, 20 = 1 second) to rescan all online player pairs.
+  # Lower = more responsive but more CPU. NOTE: changing this value needs a
+  # server restart to take effect (the repeating task's period is fixed at
+  # startup) - enabled/max-distance DO apply live via /subchunkculler reload.
+  check-interval-ticks: 20
