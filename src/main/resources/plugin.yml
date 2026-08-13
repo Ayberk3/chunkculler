@@ -1,5 +1,5 @@
 name: SubChunkCuller
-version: '1.0.0'
+version: '1.0.2'
 main: dev.ayberk.subchunkculler.Main
 api-version: '1.20'
 depend: [packetevents]
@@ -8,3 +8,13 @@ description: >
   Vertical sub-chunk culling - strips chunk sections below a configurable
   cutoff from outgoing chunk packets so ESP/X-Ray clients never receive the
   block/tile-entity data for underground bases in the first place.
+commands:
+  subchunkculler:
+    description: Reloads SubChunkCuller's config.yml without a server restart.
+    usage: /<command> reload
+    aliases: [scc]
+    permission: subchunkculler.reload
+permissions:
+  subchunkculler.reload:
+    description: Allows reloading SubChunkCuller's config
+    default: op
