@@ -47,6 +47,13 @@ public final class Main extends JavaPlugin {
         getCommand("subchunkculler").setExecutor(reloadCommand);
         getCommand("subchunkculler").setTabCompleter(reloadCommand);
 
+        getServer().getScheduler().runTaskTimer(
+                this,
+                visibilityListener::refreshLineOfSight,
+                configManager.getLosCheckIntervalTicks(),
+                configManager.getLosCheckIntervalTicks()
+        );
+
         for (Player player : getServer().getOnlinePlayers()) {
             PLAYER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
