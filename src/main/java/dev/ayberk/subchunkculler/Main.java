@@ -43,6 +43,10 @@ public final class Main extends JavaPlugin {
         getServer().getPluginManager()
                 .registerEvents(new PlayerMoveListener(this, configManager, visibilityListener), this);
 
+        ReloadCommand reloadCommand = new ReloadCommand(this, configManager);
+        getCommand("subchunkculler").setExecutor(reloadCommand);
+        getCommand("subchunkculler").setTabCompleter(reloadCommand);
+
         for (Player player : getServer().getOnlinePlayers()) {
             PLAYER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
