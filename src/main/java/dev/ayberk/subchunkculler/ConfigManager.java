@@ -24,6 +24,10 @@ public final class ConfigManager implements Listener {
     private volatile int absoluteCutoffSection;
     private volatile Set<String> enabledWorlds = Collections.emptySet();
 
+    private volatile boolean losEnabled;
+    private volatile double losMaxDistance;
+    private volatile int losCheckIntervalTicks;
+
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
 
     public ConfigManager(Main plugin) {
@@ -40,6 +44,10 @@ public final class ConfigManager implements Listener {
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
         this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
+
+        this.losEnabled = cfg.getBoolean("line-of-sight.enabled", true);
+        this.losMaxDistance = Math.max(1.0, Math.min(128.0, cfg.getDouble("line-of-sight.max-distance", 48.0)));
+        this.losCheckIntervalTicks = Math.max(5, cfg.getInt("line-of-sight.check-interval-ticks", 20));
 
         Set<String> worlds = new HashSet<>(cfg.getStringList("enabled-worlds"));
         if (worlds.isEmpty()) {
@@ -102,5 +110,17 @@ public final class ConfigManager implements Listener {
 
     public int getAbsoluteCutoffSection() {
         return absoluteCutoffSection;
+    }
+
+    public boolean isLosEnabled() {
+        return losEnabled;
+    }
+
+    public double getLosMaxDistance() {
+        return losMaxDistance;
+    }
+
+    public int getLosCheckIntervalTicks() {
+        return losCheckIntervalTicks;
     }
 }
