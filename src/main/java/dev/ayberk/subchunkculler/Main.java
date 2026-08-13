@@ -33,11 +33,15 @@ public final class Main extends JavaPlugin {
         configManager.load();
         getServer().getPluginManager().registerEvents(configManager, this);
 
+        EntityVisibilityListener visibilityListener = new EntityVisibilityListener(this, configManager);
+
         PacketEvents.getAPI().getEventManager()
                 .registerListener(new ChunkPacketListener(configManager));
+        PacketEvents.getAPI().getEventManager()
+                .registerListener(visibilityListener);
 
         getServer().getPluginManager()
-                .registerEvents(new PlayerMoveListener(this, configManager), this);
+                .registerEvents(new PlayerMoveListener(this, configManager, visibilityListener), this);
 
         for (Player player : getServer().getOnlinePlayers()) {
             PLAYER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
