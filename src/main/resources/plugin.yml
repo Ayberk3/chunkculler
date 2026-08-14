@@ -7,7 +7,7 @@ author: Ayberk
 description: >
   Vertical sub-chunk culling - strips chunk sections below a configurable
   cutoff from outgoing chunk packets so ESP/X-Ray clients never receive the
-  block/tile-entity data for underground bases in the first place.
+  block data for underground bases in the first place.
 commands:
   subchunkculler:
     description: Reloads SubChunkCuller's config.yml without a server restart.
