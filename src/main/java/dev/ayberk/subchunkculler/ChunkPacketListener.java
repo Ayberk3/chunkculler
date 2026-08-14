@@ -7,31 +7,22 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
-import com.github.retrooper.packetevents.protocol.world.chunk.TileEntity;
 import com.github.retrooper.packetevents.protocol.world.biome.Biomes;
 import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.Field;
 import java.util.logging.Logger;
 
+/**
+ * The plugin's ONLY job: strip chunk sections below the configured cutoff
+ * from outgoing chunk packets. Nothing else - no tile-entity handling, no
+ * entity/player visibility, no LOS. Just terrain Y-cutoff.
+ */
 public final class ChunkPacketListener extends PacketListenerAbstract {
 
     private final ConfigManager config;
     private final Logger logger;
-
-    private static final Field TILE_ENTITIES_FIELD = resolveTileEntitiesField();
-
-    private static Field resolveTileEntitiesField() {
-        try {
-            Field f = Column.class.getDeclaredField("tileEntities");
-            f.setAccessible(true);
-            return f;
-        } catch (ReflectiveOperationException e) {
-            return null;
-        }
-    }
 
     public ChunkPacketListener(ConfigManager config) {
         super(PacketListenerPriority.NORMAL);
@@ -57,7 +48,11 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
 
         Integer playerSectionY = Main.VIEWER_SECTION_Y.get(player.getUniqueId());
         if (playerSectionY == null) {
-            return;
+            // Should not normally happen - ChunkRefreshListener seeds this on
+            // PlayerLoginEvent, before any chunk packets can go out. If it's
+            // still missing here, fail CLOSED (strip everything) instead of
+            // silently letting an unprotected packet through.
+            playerSectionY = config.getAbsoluteCutoffSection();
         }
 
         final int cutoffSection = config.computeCutoffSection(playerSectionY);
@@ -78,10 +73,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             }
         }
 
-        if (strippedCount > 0) {
-            stripTileEntitiesBelow(column, cutoffSection << 4);
-        }
-
         if (config.isDebugMode() && strippedCount > 0) {
             logger.info(String.format(
                     "[%s] chunk (%d,%d): stripped %d/%d section(s) below y=%d (player section %d, cutoff %d)",
@@ -99,39 +90,5 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         section.set(0, 0, 0, 0);
         section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
         return section;
-    }
-
-    private void stripTileEntitiesBelow(Column column, int cutoffBlockY) {
-        if (TILE_ENTITIES_FIELD == null) {
-            return;
-        }
-        TileEntity[] entities = column.getTileEntities();
-        if (entities == null || entities.length == 0) {
-            return;
-        }
-
-        int keepCount = 0;
-        for (TileEntity te : entities) {
-            if (te.getY() >= cutoffBlockY) {
-                keepCount++;
-            }
-        }
-        if (keepCount == entities.length) {
-            return;
-        }
-
-        TileEntity[] filtered = new TileEntity[keepCount];
-        int idx = 0;
-        for (TileEntity te : entities) {
-            if (te.getY() >= cutoffBlockY) {
-                filtered[idx++] = te;
-            }
-        }
-
-        try {
-            TILE_ENTITIES_FIELD.set(column, filtered);
-        } catch (IllegalAccessException e) {
-            // reflection blocked - leave tile entities as-is
-        }
     }
 }

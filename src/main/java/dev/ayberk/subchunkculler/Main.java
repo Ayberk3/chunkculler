@@ -2,6 +2,7 @@ package dev.ayberk.subchunkculler;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -49,11 +50,16 @@ public final class Main extends JavaPlugin {
                 .registerEvents(new ChunkRefreshListener(this, configManager), this);
 
         ReloadCommand reloadCommand = new ReloadCommand(this, configManager);
-        getCommand("subchunkculler").setExecutor(reloadCommand);
-        getCommand("subchunkculler").setTabCompleter(reloadCommand);
+        PluginCommand command = getCommand("subchunkculler");
+        if (command != null) {
+            command.setExecutor(reloadCommand);
+            command.setTabCompleter(reloadCommand);
+        } else {
+            getLogger().severe("subchunkculler command missing from plugin.yml - /subchunkculler reload will not work.");
+        }
 
         // Covers the case where the plugin is /reload-ed while players are
-        // already connected (no PlayerJoinEvent fires for them).
+        // already connected (no PlayerLoginEvent fires for them).
         for (Player player : getServer().getOnlinePlayers()) {
             VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }

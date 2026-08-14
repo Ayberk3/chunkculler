@@ -7,9 +7,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 import java.util.Map;
@@ -24,6 +25,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *   2. force a chunk resend when the viewer digs downward across a
  *      sub-chunk section boundary, or teleports, so newly-uncovered
  *      terrain actually reaches their client instead of staying stripped.
+ *
+ * VIEWER_SECTION_Y is seeded on PlayerLoginEvent specifically (not
+ * PlayerJoinEvent) because Paper can start streaming a joining player's
+ * first chunk packets before PlayerJoinEvent fires. PlayerLoginEvent fires
+ * earlier, before the player is placed in the world, so by the time the
+ * first CHUNK_DATA packet goes out the cutoff is already known and that
+ * initial burst gets stripped correctly instead of leaking unprotected.
  */
 public final class ChunkRefreshListener implements Listener {
 
@@ -38,7 +46,7 @@ public final class ChunkRefreshListener implements Listener {
     }
 
     @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
+    public void onLogin(PlayerLoginEvent event) {
         Player player = event.getPlayer();
         Main.VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
     }
@@ -56,16 +64,37 @@ public final class ChunkRefreshListener implements Listener {
         Main.VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
     }
 
+    /**
+     * Death can move a player far from where they were (e.g. dug deep
+     * underground, respawn back at the surface bed/spawn point). Without
+     * this, the stale pre-death section would be used to compute the
+     * cutoff for the respawn location's first chunk packets.
+     */
+    @EventHandler
+    public void onRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        Location respawnLocation = event.getRespawnLocation();
+        Main.VIEWER_SECTION_Y.put(player.getUniqueId(), respawnLocation.getBlockY() >> 4);
+
+        if (!config.isWorldEnabled(respawnLocation.getWorld().getName())) {
+            return;
+        }
+        refreshChunksAround(player, respawnLocation);
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
-        handleSectionCheck(event.getPlayer(), event.getTo() == null ? null : event.getTo().getBlockY());
+        handleSectionCheck(event.getPlayer(), event.getTo());
     }
 
     /**
-     * Teleports (e.g. /home, /warp) can jump a player far horizontally
-     * while staying in the same Y-section, or even the same Y entirely.
-     * Unlike onMove, we can't gate this on a section change - always force
-     * a refresh so newly-relevant chunks around the destination load in.
+     * Teleports (e.g. /home, /warp, portals) can jump a player far
+     * horizontally while staying in the same Y-section, or even the same Y
+     * entirely - and can also be how a player changes worlds. Unlike
+     * onMove, we can't gate this on a section change - always force a
+     * refresh so newly-relevant chunks around the destination load in.
+     * PlayerTeleportEvent fires BEFORE the teleport happens, so this also
+     * closes the same kind of race PlayerLoginEvent closes for joining.
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) {
@@ -85,15 +114,15 @@ public final class ChunkRefreshListener implements Listener {
             plugin.getLogger().info(player.getName() + " teleported - forcing full chunk refresh");
         }
 
-        refreshChunksAround(player);
+        refreshChunksAround(player, to);
     }
 
-    private void handleSectionCheck(Player player, Integer toBlockY) {
-        if (toBlockY == null || !config.isWorldEnabled(player.getWorld().getName())) {
+    private void handleSectionCheck(Player player, Location to) {
+        if (to == null || !config.isWorldEnabled(to.getWorld().getName())) {
             return;
         }
 
-        int newSection = toBlockY >> 4;
+        int newSection = to.getBlockY() >> 4;
         UUID id = player.getUniqueId();
         Integer oldSection = Main.VIEWER_SECTION_Y.put(id, newSection);
 
@@ -107,11 +136,11 @@ public final class ChunkRefreshListener implements Listener {
         }
 
         if (newSection < oldSection) {
-            refreshChunksAround(player);
+            refreshChunksAround(player, to);
         }
     }
 
-    private void refreshChunksAround(Player player) {
+    private void refreshChunksAround(Player player, Location around) {
         UUID id = player.getUniqueId();
         long now = System.currentTimeMillis();
         Long last = lastRefreshAt.get(id);
@@ -120,9 +149,9 @@ public final class ChunkRefreshListener implements Listener {
         }
         lastRefreshAt.put(id, now);
 
-        World world = player.getWorld();
-        int centerX = player.getLocation().getBlockX() >> 4;
-        int centerZ = player.getLocation().getBlockZ() >> 4;
+        World world = around.getWorld();
+        int centerX = around.getBlockX() >> 4;
+        int centerZ = around.getBlockZ() >> 4;
         int radius = config.getRefreshRadius();
 
         for (int dx = -radius; dx <= radius; dx++) {
