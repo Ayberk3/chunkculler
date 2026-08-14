@@ -11,8 +11,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class Main extends JavaPlugin {
 
-    public static final Map<UUID, Integer> PLAYER_SECTION_Y = new ConcurrentHashMap<>();
-    public static final Map<UUID, Long> LAST_REFRESH = new ConcurrentHashMap<>();
+    /**
+     * The ONLY per-viewer state this plugin keeps: which sub-chunk section
+     * the viewer is currently standing in. It exists purely so
+     * ChunkPacketListener knows where to cut terrain when it strips an
+     * outgoing chunk packet - reading Bukkit's Player object directly from
+     * inside the packet handler isn't safe, since packet events can fire
+     * off the main thread. This is NOT a player/entity tracking system;
+     * nothing else about the viewer (or any other player/entity) is stored
+     * or inspected anywhere in this plugin.
+     */
+    public static final Map<UUID, Integer> VIEWER_SECTION_Y = new ConcurrentHashMap<>();
 
     private ConfigManager configManager;
 
@@ -33,29 +42,20 @@ public final class Main extends JavaPlugin {
         configManager.load();
         getServer().getPluginManager().registerEvents(configManager, this);
 
-        EntityVisibilityListener visibilityListener = new EntityVisibilityListener(this, configManager);
-
         PacketEvents.getAPI().getEventManager()
                 .registerListener(new ChunkPacketListener(configManager));
-        PacketEvents.getAPI().getEventManager()
-                .registerListener(visibilityListener);
 
         getServer().getPluginManager()
-                .registerEvents(new PlayerMoveListener(this, configManager, visibilityListener), this);
+                .registerEvents(new ChunkRefreshListener(this, configManager), this);
 
         ReloadCommand reloadCommand = new ReloadCommand(this, configManager);
         getCommand("subchunkculler").setExecutor(reloadCommand);
         getCommand("subchunkculler").setTabCompleter(reloadCommand);
 
-        getServer().getScheduler().runTaskTimer(
-                this,
-                visibilityListener::refreshLineOfSight,
-                configManager.getLosCheckIntervalTicks(),
-                configManager.getLosCheckIntervalTicks()
-        );
-
+        // Covers the case where the plugin is /reload-ed while players are
+        // already connected (no PlayerJoinEvent fires for them).
         for (Player player : getServer().getOnlinePlayers()) {
-            PLAYER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
+            VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
 
         getLogger().info("SubChunkCuller enabled - hiding sections more than "
@@ -65,8 +65,7 @@ public final class Main extends JavaPlugin {
     @Override
     public void onDisable() {
         PacketEvents.getAPI().terminate();
-        PLAYER_SECTION_Y.clear();
-        LAST_REFRESH.clear();
+        VIEWER_SECTION_Y.clear();
     }
 
     public ConfigManager getConfigManager() {

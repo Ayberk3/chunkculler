@@ -55,7 +55,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             return;
         }
 
-        Integer playerSectionY = Main.PLAYER_SECTION_Y.get(player.getUniqueId());
+        Integer playerSectionY = Main.VIEWER_SECTION_Y.get(player.getUniqueId());
         if (playerSectionY == null) {
             return;
         }
