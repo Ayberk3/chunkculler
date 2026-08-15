@@ -23,6 +23,8 @@ public final class ConfigManager implements Listener {
     private volatile long refreshCooldownMs;
     private volatile int absoluteCutoffSection;
     private volatile Set<String> enabledWorlds = Collections.emptySet();
+    private volatile boolean fakeFloorEnabled;
+    private volatile String fakeFloorBlock;
 
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
 
@@ -40,6 +42,10 @@ public final class ConfigManager implements Listener {
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
         this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
+        this.fakeFloorEnabled = cfg.getBoolean("fake-floor.enabled", true);
+        String configuredBlock = cfg.getString("fake-floor.block", "minecraft:deepslate");
+        this.fakeFloorBlock = (configuredBlock == null || configuredBlock.isBlank())
+                ? "minecraft:deepslate" : configuredBlock.trim();
 
         Set<String> worlds = new HashSet<>(cfg.getStringList("enabled-worlds"));
         if (worlds.isEmpty()) {
@@ -102,5 +108,13 @@ public final class ConfigManager implements Listener {
 
     public int getAbsoluteCutoffSection() {
         return absoluteCutoffSection;
+    }
+
+    public boolean isFakeFloorEnabled() {
+        return fakeFloorEnabled;
+    }
+
+    public String getFakeFloorBlock() {
+        return fakeFloorBlock;
     }
 }

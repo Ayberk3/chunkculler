@@ -9,20 +9,31 @@ import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
 import com.github.retrooper.packetevents.protocol.world.biome.Biomes;
 import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
+import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
+import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import org.bukkit.entity.Player;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
  * The plugin's ONLY job: strip chunk sections below the configured cutoff
  * from outgoing chunk packets. Nothing else - no tile-entity handling, no
- * entity/player visibility, no LOS. Just terrain Y-cutoff.
+ * entity/player visibility, no LOS. Just terrain Y-cutoff (plus an
+ * optional cosmetic floor layer right at the boundary - see fake-floor.*
+ * in config.yml).
  */
 public final class ChunkPacketListener extends PacketListenerAbstract {
 
     private final ConfigManager config;
     private final Logger logger;
+
+    // Resolved per-ClientVersion block state for the fake floor. Cleared
+    // whenever the configured block string changes (e.g. via /reload).
+    private final Map<ClientVersion, WrappedBlockState> floorStateCache = new ConcurrentHashMap<>();
+    private volatile String cachedFloorBlockName = "";
 
     public ChunkPacketListener(ConfigManager config) {
         super(PacketListenerPriority.NORMAL);
@@ -56,6 +67,10 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         }
 
         final int cutoffSection = config.computeCutoffSection(playerSectionY);
+        // The highest section that gets fully stripped - this is where the
+        // fake floor (if enabled) gets painted, right at the boundary.
+        final int floorSectionY = cutoffSection - 1;
+        final boolean drawFloor = config.isFakeFloorEnabled();
 
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
         Column column = wrapper.getColumn();
@@ -67,7 +82,23 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         int strippedCount = 0;
         for (int i = 0; i < chunks.length; i++) {
             int actualSectionY = minSection + i;
-            if (actualSectionY < cutoffSection && !isEmptySection(chunks[i])) {
+            if (actualSectionY >= cutoffSection) {
+                continue;
+            }
+
+            if (drawFloor && actualSectionY == floorSectionY) {
+                // Always paint the floor here, even if this section was
+                // already empty (nothing generated, void, etc.) - if the
+                // floor only showed up when real terrain was actually
+                // hidden underneath, its presence/absence would itself
+                // leak whether something is there, which defeats the
+                // point of camouflaging the cutoff in the first place.
+                chunks[i] = buildFloorSection(clientVersion);
+                strippedCount++;
+                continue;
+            }
+
+            if (!isEmptySection(chunks[i])) {
                 chunks[i] = buildEmptySection(clientVersion);
                 strippedCount++;
             }
@@ -90,5 +121,43 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         section.set(0, 0, 0, 0);
         section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
         return section;
+    }
+
+    private BaseChunk buildFloorSection(ClientVersion clientVersion) {
+        Chunk_v1_18 section = new Chunk_v1_18(clientVersion);
+        WrappedBlockState floorState = resolveFloorState(clientVersion);
+        // Top row of this section (local y=15) sits exactly one block
+        // below the cutoff line - that's where the player's view of "solid
+        // ground" should start.
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                section.set(x, 15, z, floorState);
+            }
+        }
+        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+        return section;
+    }
+
+    private WrappedBlockState resolveFloorState(ClientVersion clientVersion) {
+        String configuredBlock = config.getFakeFloorBlock();
+        if (!configuredBlock.equals(cachedFloorBlockName)) {
+            floorStateCache.clear();
+            cachedFloorBlockName = configuredBlock;
+        }
+        return floorStateCache.computeIfAbsent(clientVersion, cv -> resolveConfiguredOrDefault(cv, configuredBlock));
+    }
+
+    private WrappedBlockState resolveConfiguredOrDefault(ClientVersion clientVersion, String configuredBlock) {
+        try {
+            WrappedBlockState state = WrappedBlockState.getByString(clientVersion, configuredBlock);
+            if (state != null) {
+                return state;
+            }
+        } catch (Exception e) {
+            // fall through to the default below
+        }
+        logger.warning("fake-floor.block '" + configuredBlock
+                + "' could not be resolved - falling back to minecraft:deepslate");
+        return WrappedBlockState.getDefaultState(clientVersion, StateTypes.DEEPSLATE);
     }
 }
