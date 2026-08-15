@@ -28,3 +28,18 @@ refresh-radius: 3
 # Minimum milliseconds between forced chunk refreshes for the same player,
 # to avoid flooding the network thread while a player digs straight down.
 refresh-cooldown-ms: 250
+
+# Instead of leaving pure void directly below the cutoff, paint a single
+# solid layer of "block" right at the boundary - like DonutSMP and most
+# other anti-xray plugins do. A hard empty void below a flat plane is
+# itself a giveaway that something is being hidden right there; a solid
+# floor just looks like normal terrain. Only the one section immediately
+# below the cutoff gets this treatment - everything deeper stays plain
+# void, which you'd never see anyway since the floor blocks the view.
+fake-floor:
+  enabled: true
+  # Any valid block ID, e.g. minecraft:deepslate, minecraft:stone,
+  # minecraft:bedrock. Deepslate is the default because it's what
+  # naturally generates around typical cutoff depths, so it doesn't look
+  # out of place.
+  block: minecraft:deepslate
