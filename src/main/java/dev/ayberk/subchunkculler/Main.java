@@ -46,6 +46,13 @@ public final class Main extends JavaPlugin {
         PacketEvents.getAPI().getEventManager()
                 .registerListener(new ChunkPacketListener(configManager));
 
+        // Stripping the chunk packet only sanitises the first snapshot of a
+        // chunk. This one keeps later block updates (flowing water, pistons,
+        // crops, redstone, block breaking) from re-drawing the hidden area on
+        // the client one packet at a time.
+        PacketEvents.getAPI().getEventManager()
+                .registerListener(new BlockUpdateListener(configManager));
+
         getServer().getPluginManager()
                 .registerEvents(new ChunkRefreshListener(this, configManager), this);
 
