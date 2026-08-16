@@ -25,6 +25,7 @@ public final class ConfigManager implements Listener {
     private volatile Set<String> enabledWorlds = Collections.emptySet();
     private volatile boolean fakeFloorEnabled;
     private volatile String fakeFloorBlock;
+    private volatile boolean blockUpdateFilterEnabled;
 
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
 
@@ -46,6 +47,7 @@ public final class ConfigManager implements Listener {
         String configuredBlock = cfg.getString("fake-floor.block", "minecraft:deepslate");
         this.fakeFloorBlock = (configuredBlock == null || configuredBlock.isBlank())
                 ? "minecraft:deepslate" : configuredBlock.trim();
+        this.blockUpdateFilterEnabled = cfg.getBoolean("block-update-filter.enabled", true);
 
         Set<String> worlds = new HashSet<>(cfg.getStringList("enabled-worlds"));
         if (worlds.isEmpty()) {
@@ -116,5 +118,9 @@ public final class ConfigManager implements Listener {
 
     public String getFakeFloorBlock() {
         return fakeFloorBlock;
+    }
+
+    public boolean isBlockUpdateFilterEnabled() {
+        return blockUpdateFilterEnabled;
     }
 }
