@@ -43,3 +43,15 @@ fake-floor:
   # naturally generates around typical cutoff depths, so it doesn't look
   # out of place.
   block: minecraft:deepslate
+
+# Stripping the chunk packet only sanitises the FIRST snapshot of a chunk.
+# Every block that changes afterwards is sent as its own block update, and
+# those updates were not checked against the cutoff - so anything that
+# moves below the line gets re-drawn on the client one block at a time,
+# floating inside the supposedly empty space. Flowing water is the obvious
+# symptom (blue veins hanging in the void when viewed with freecam), but
+# the same gap leaks pistons, doors, crops, redstone and block breaking.
+# This filter drops those packets when they target anything below the
+# viewer's cutoff. Leave it on unless you are debugging.
+block-update-filter:
+  enabled: true
