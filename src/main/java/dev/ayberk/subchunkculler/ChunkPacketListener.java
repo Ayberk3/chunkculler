@@ -1,12 +1,15 @@
 package dev.ayberk.subchunkculler;
 
+import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
+import com.github.retrooper.packetevents.protocol.world.chunk.TileEntity;
 import com.github.retrooper.packetevents.protocol.world.biome.Biomes;
 import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
@@ -19,16 +22,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
- * The plugin's ONLY job: strip chunk sections below the configured cutoff
- * from outgoing chunk packets. Nothing else - no tile-entity handling, no
- * entity/player visibility, no LOS. Just terrain Y-cutoff (plus an
- * optional cosmetic floor layer right at the boundary - see fake-floor.*
- * in config.yml).
+ * The plugin's job: strip chunk sections below the configured cutoff from
+ * outgoing chunk packets (plus an optional cosmetic floor layer right at the
+ * boundary - see fake-floor.* in config.yml), AND drop the block-entity
+ * (tile entity - chests, hoppers, furnaces, signs, spawners, ...) records
+ * for anything that ends up inside a hidden/faked section.
+ *
+ * The block-entity list travels in the SAME chunk packet as the section
+ * data, but as a completely separate array (Column#getTileEntities()) that
+ * is NOT tied to what block is actually rendered at that position. Blanking
+ * a section's blocks to air/deepslate does nothing to that list on its own -
+ * the full NBT of every chest/hopper/etc. in the hidden area (including
+ * container contents) would still reach the client. This is exactly what a
+ * RaycastedAntiESP install on the same server was catching and stripping a
+ * second time ("Received invalid or uncached chunk block entity" warnings) -
+ * it should never have had anything to catch here in the first place.
  */
 public final class ChunkPacketListener extends PacketListenerAbstract {
 
+    private static final TileEntity[] EMPTY_TILE_ENTITIES = new TileEntity[0];
+
     private final ConfigManager config;
     private final Logger logger;
+    private final boolean modernHeightmaps;
 
     // Resolved per-ClientVersion block state for the fake floor. Cleared
     // whenever the configured block string changes (e.g. via /reload).
@@ -39,6 +55,8 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         super(PacketListenerPriority.NORMAL);
         this.config = config;
         this.logger = Logger.getLogger("SubChunkCuller");
+        this.modernHeightmaps = PacketEvents.getAPI().getServerManager()
+                .getVersion().isNewerThanOrEquals(ServerVersion.V_1_21_5);
     }
 
     @Override
@@ -104,12 +122,68 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             }
         }
 
-        if (config.isDebugMode() && strippedCount > 0) {
+        int strippedTileEntities = stripHiddenTileEntities(wrapper, column, cutoffSection << 4);
+
+        if (config.isDebugMode() && (strippedCount > 0 || strippedTileEntities > 0)) {
             logger.info(String.format(
-                    "[%s] chunk (%d,%d): stripped %d/%d section(s) below y=%d (player section %d, cutoff %d)",
+                    "[%s] chunk (%d,%d): stripped %d/%d section(s) and %d tile entit%s below y=%d (player section %d, cutoff %d)",
                     player.getName(), column.getX(), column.getZ(), strippedCount, chunks.length,
+                    strippedTileEntities, strippedTileEntities == 1 ? "y" : "ies",
                     cutoffSection << 4, playerSectionY, cutoffSection));
         }
+    }
+
+    /**
+     * Removes every block-entity record at or below {@code cutoffBlockY}
+     * from the packet's tile-entity list. Column#getTileEntities() is a
+     * plain array with no setter, so unlike the section array (which we
+     * mutate element-by-element in place above) a removal has to go through
+     * building a new, shorter array and a new Column - mirrors exactly what
+     * RaycastedAntiESP's own AbstractChunkParser#copyColumn does, so the
+     * result stays compatible whether or not that plugin is installed.
+     */
+    private int stripHiddenTileEntities(WrapperPlayServerChunkData wrapper, Column column, int cutoffBlockY) {
+        TileEntity[] source = column.getTileEntities();
+        if (source.length == 0) {
+            return 0;
+        }
+
+        TileEntity[] kept = null;
+        int keptCount = 0;
+        int removed = 0;
+        for (int index = 0; index < source.length; index++) {
+            TileEntity tileEntity = source[index];
+            if (tileEntity.getY() < cutoffBlockY) {
+                removed++;
+                if (kept == null) {
+                    // First removal we've hit - everything before this index
+                    // was kept, so seed the new array with it in one copy.
+                    kept = new TileEntity[source.length - 1];
+                    if (index > 0) {
+                        System.arraycopy(source, 0, kept, 0, index);
+                        keptCount = index;
+                    }
+                }
+                continue;
+            }
+            if (kept != null) {
+                kept[keptCount++] = tileEntity;
+            }
+        }
+
+        if (removed == 0) {
+            return 0;
+        }
+
+        TileEntity[] filtered = keptCount == 0
+                ? EMPTY_TILE_ENTITIES
+                : (keptCount == kept.length ? kept : java.util.Arrays.copyOf(kept, keptCount));
+
+        Column rebuilt = modernHeightmaps
+                ? new Column(column.getX(), column.getZ(), column.isFullChunk(), column.getChunks(), filtered, column.getHeightmaps())
+                : new Column(column.getX(), column.getZ(), column.isFullChunk(), column.getChunks(), filtered, column.getHeightMaps());
+        wrapper.setColumn(rebuilt);
+        return removed;
     }
 
     private boolean isEmptySection(BaseChunk chunk) {
