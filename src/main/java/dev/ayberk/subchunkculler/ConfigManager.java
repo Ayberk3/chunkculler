@@ -21,6 +21,8 @@ public final class ConfigManager implements Listener {
     private volatile boolean debugMode;
     private volatile int refreshRadius;
     private volatile long refreshCooldownMs;
+    private volatile int refreshDebounceTicks;
+    private volatile int refreshChunksPerTick;
     private volatile int absoluteCutoffSection;
     private volatile Set<String> enabledWorlds = Collections.emptySet();
     private volatile boolean fakeFloorEnabled;
@@ -42,6 +44,8 @@ public final class ConfigManager implements Listener {
         this.debugMode = cfg.getBoolean("debug-mode", false);
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
+        this.refreshDebounceTicks = Math.max(0, cfg.getInt("refresh-debounce-ticks", 6));
+        this.refreshChunksPerTick = Math.max(1, cfg.getInt("refresh-chunks-per-tick", 6));
         this.absoluteCutoffSection = cfg.getInt("absolute-cutoff-y", 0) >> 4;
         this.fakeFloorEnabled = cfg.getBoolean("fake-floor.enabled", true);
         String configuredBlock = cfg.getString("fake-floor.block", "minecraft:deepslate");
@@ -102,6 +106,14 @@ public final class ConfigManager implements Listener {
 
     public long getRefreshCooldownMs() {
         return refreshCooldownMs;
+    }
+
+    public int getRefreshDebounceTicks() {
+        return refreshDebounceTicks;
+    }
+
+    public int getRefreshChunksPerTick() {
+        return refreshChunksPerTick;
     }
 
     public int computeCutoffSection(int playerSectionY) {
