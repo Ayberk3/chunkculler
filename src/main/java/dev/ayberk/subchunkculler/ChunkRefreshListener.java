@@ -12,27 +12,13 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Pure chunk-resend plumbing. Nothing here inspects, hides, or tracks any
- * other player/entity - its only two jobs are:
- *   1. keep Main.VIEWER_SECTION_Y up to date so ChunkPacketListener knows
- *      where to cut terrain for the current viewer;
- *   2. force a chunk resend when the viewer digs downward across a
- *      sub-chunk section boundary, or teleports, so newly-uncovered
- *      terrain actually reaches their client instead of staying stripped.
- *
- * VIEWER_SECTION_Y is seeded on PlayerLoginEvent specifically (not
- * PlayerJoinEvent) because Paper can start streaming a joining player's
- * first chunk packets before PlayerJoinEvent fires. PlayerLoginEvent fires
- * earlier, before the player is placed in the world, so by the time the
- * first CHUNK_DATA packet goes out the cutoff is already known and that
- * initial burst gets stripped correctly instead of leaking unprotected.
- */
 public final class ChunkRefreshListener implements Listener {
 
     private final Main plugin;
@@ -40,9 +26,56 @@ public final class ChunkRefreshListener implements Listener {
 
     private final Map<UUID, Long> lastRefreshAt = new ConcurrentHashMap<>();
 
+    private final Map<UUID, BukkitTask> pendingDebounce = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> pendingSince = new ConcurrentHashMap<>();
+    private static final long MAX_DEBOUNCE_MS = 1500L;
+
+    private final ArrayDeque<long[]> refreshQueue = new ArrayDeque<>();
+    private final Map<Long, World> chunkWorlds = new ConcurrentHashMap<>();
+    private BukkitTask drainTask;
+
     public ChunkRefreshListener(Main plugin, ConfigManager config) {
         this.plugin = plugin;
         this.config = config;
+    }
+
+    public void startDrainTask() {
+        if (drainTask != null) {
+            return;
+        }
+        drainTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::drainRefreshQueue, 1L, 1L);
+    }
+
+    public void stop() {
+        if (drainTask != null) {
+            drainTask.cancel();
+            drainTask = null;
+        }
+        for (BukkitTask task : pendingDebounce.values()) {
+            task.cancel();
+        }
+        pendingDebounce.clear();
+        pendingSince.clear();
+        refreshQueue.clear();
+        chunkWorlds.clear();
+    }
+
+    private void drainRefreshQueue() {
+        int budget = config.getRefreshChunksPerTick();
+        for (int i = 0; i < budget; i++) {
+            long[] entry = refreshQueue.poll();
+            if (entry == null) {
+                return;
+            }
+            long worldKey = entry[0];
+            int cx = (int) entry[1];
+            int cz = (int) entry[2];
+            World world = chunkWorlds.get(worldKey);
+            if (world != null && world.isChunkLoaded(cx, cz)) {
+                //noinspection deprecation
+                world.refreshChunk(cx, cz);
+            }
+        }
     }
 
     @EventHandler
@@ -56,6 +89,11 @@ public final class ChunkRefreshListener implements Listener {
         UUID id = event.getPlayer().getUniqueId();
         Main.VIEWER_SECTION_Y.remove(id);
         lastRefreshAt.remove(id);
+        pendingSince.remove(id);
+        BukkitTask task = pendingDebounce.remove(id);
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     @EventHandler
@@ -64,12 +102,6 @@ public final class ChunkRefreshListener implements Listener {
         Main.VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
     }
 
-    /**
-     * Death can move a player far from where they were (e.g. dug deep
-     * underground, respawn back at the surface bed/spawn point). Without
-     * this, the stale pre-death section would be used to compute the
-     * cutoff for the respawn location's first chunk packets.
-     */
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
@@ -87,15 +119,6 @@ public final class ChunkRefreshListener implements Listener {
         handleSectionCheck(event.getPlayer(), event.getTo());
     }
 
-    /**
-     * Teleports (e.g. /home, /warp, portals) can jump a player far
-     * horizontally while staying in the same Y-section, or even the same Y
-     * entirely - and can also be how a player changes worlds. Unlike
-     * onMove, we can't gate this on a section change - always force a
-     * refresh so newly-relevant chunks around the destination load in.
-     * PlayerTeleportEvent fires BEFORE the teleport happens, so this also
-     * closes the same kind of race PlayerLoginEvent closes for joining.
-     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) {
         Player player = event.getPlayer();
@@ -136,8 +159,31 @@ public final class ChunkRefreshListener implements Listener {
         }
 
         if (newSection < oldSection) {
-            refreshChunksAround(player, to);
+            scheduleDebouncedRefresh(player);
         }
+    }
+
+    private void scheduleDebouncedRefresh(Player player) {
+        UUID id = player.getUniqueId();
+        long now = System.currentTimeMillis();
+
+        BukkitTask existing = pendingDebounce.get(id);
+        Long since = pendingSince.get(id);
+        if (existing != null && since != null && now - since < MAX_DEBOUNCE_MS) {
+            existing.cancel();
+        } else {
+            pendingSince.put(id, now);
+        }
+
+        BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            pendingDebounce.remove(id);
+            pendingSince.remove(id);
+            if (player.isOnline()) {
+                queueRefreshAround(player, player.getLocation());
+            }
+        }, config.getRefreshDebounceTicks());
+
+        pendingDebounce.put(id, task);
     }
 
     private void refreshChunksAround(Player player, Location around) {
@@ -148,8 +194,14 @@ public final class ChunkRefreshListener implements Listener {
             return;
         }
         lastRefreshAt.put(id, now);
+        queueRefreshAround(player, around);
+    }
 
+    private void queueRefreshAround(Player player, Location around) {
         World world = around.getWorld();
+        long worldKey = world.getUID().getMostSignificantBits() ^ world.getUID().getLeastSignificantBits();
+        chunkWorlds.putIfAbsent(worldKey, world);
+
         int centerX = around.getBlockX() >> 4;
         int centerZ = around.getBlockZ() >> 4;
         int radius = config.getRefreshRadius();
@@ -159,8 +211,7 @@ public final class ChunkRefreshListener implements Listener {
                 int cx = centerX + dx;
                 int cz = centerZ + dz;
                 if (world.isChunkLoaded(cx, cz)) {
-                    //noinspection deprecation
-                    world.refreshChunk(cx, cz);
+                    refreshQueue.add(new long[]{worldKey, cx, cz});
                 }
             }
         }
