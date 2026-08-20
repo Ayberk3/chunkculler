@@ -28,6 +28,8 @@ refresh-radius: 3
 # Minimum milliseconds between forced chunk refreshes for the same player,
 # to avoid flooding the network thread while a player digs straight down.
 refresh-cooldown-ms: 250
+refresh-debounce-ticks: 6
+refresh-chunks-per-tick: 6
 
 # Instead of leaving pure void directly below the cutoff, paint a single
 # solid layer of "block" right at the boundary - like DonutSMP and most
