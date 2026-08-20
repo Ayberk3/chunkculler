@@ -12,19 +12,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class Main extends JavaPlugin {
 
-    /**
-     * The ONLY per-viewer state this plugin keeps: which sub-chunk section
-     * the viewer is currently standing in. It exists purely so
-     * ChunkPacketListener knows where to cut terrain when it strips an
-     * outgoing chunk packet - reading Bukkit's Player object directly from
-     * inside the packet handler isn't safe, since packet events can fire
-     * off the main thread. This is NOT a player/entity tracking system;
-     * nothing else about the viewer (or any other player/entity) is stored
-     * or inspected anywhere in this plugin.
-     */
     public static final Map<UUID, Integer> VIEWER_SECTION_Y = new ConcurrentHashMap<>();
 
     private ConfigManager configManager;
+    private ChunkRefreshListener chunkRefreshListener;
 
     @Override
     public void onLoad() {
@@ -46,15 +37,13 @@ public final class Main extends JavaPlugin {
         PacketEvents.getAPI().getEventManager()
                 .registerListener(new ChunkPacketListener(configManager));
 
-        // Stripping the chunk packet only sanitises the first snapshot of a
-        // chunk. This one keeps later block updates (flowing water, pistons,
-        // crops, redstone, block breaking) from re-drawing the hidden area on
-        // the client one packet at a time.
         PacketEvents.getAPI().getEventManager()
                 .registerListener(new BlockUpdateListener(configManager));
 
-        getServer().getPluginManager()
-                .registerEvents(new ChunkRefreshListener(this, configManager), this);
+        ChunkRefreshListener refreshListener = new ChunkRefreshListener(this, configManager);
+        getServer().getPluginManager().registerEvents(refreshListener, this);
+        refreshListener.startDrainTask();
+        this.chunkRefreshListener = refreshListener;
 
         ReloadCommand reloadCommand = new ReloadCommand(this, configManager);
         PluginCommand command = getCommand("subchunkculler");
@@ -65,8 +54,6 @@ public final class Main extends JavaPlugin {
             getLogger().severe("subchunkculler command missing from plugin.yml - /subchunkculler reload will not work.");
         }
 
-        // Covers the case where the plugin is /reload-ed while players are
-        // already connected (no PlayerLoginEvent fires for them).
         for (Player player : getServer().getOnlinePlayers()) {
             VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
@@ -77,6 +64,9 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (chunkRefreshListener != null) {
+            chunkRefreshListener.stop();
+        }
         PacketEvents.getAPI().terminate();
         VIEWER_SECTION_Y.clear();
     }
