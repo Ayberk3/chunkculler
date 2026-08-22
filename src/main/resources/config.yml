@@ -1,59 +1,37 @@
-# How many 16-block sub-chunk sections below the player's current section
-# stay visible to their client. Anything further below is stripped from
-# the outgoing chunk packet entirely - never sent, not just hidden
-# client-side.
-sub-chunks-below: 2
+# ==========================================================
+#              VerticalAntiESP Configuration
+# Ultra-High-Performance Zero-Leak Vertical Entity Culler
+# ==========================================================
 
-# Worlds this system is active in. Add every world you want protected
-# (world names, not UUIDs).
-enabled-worlds:
-  - world
+# Vertical Distance Settings (in blocks)
+# If an entity is >= hide-distance-y blocks BELOW the viewer, it is culled.
+hide-distance-y: 48.0
 
-# Hard floor for the cutoff, in blocks. Whichever is HIGHER (more
-# restrictive) of "N sections below the player" or this value wins - so a
-# player flying/standing high up never has ordinary surface terrain hidden
-# just because they're technically more than N sections above bedrock.
-# As the player approaches/goes below this Y, terrain below them starts
-# unhiding normally based on sub-chunks-below.
-absolute-cutoff-y: 0
+# Hysteresis Buffer:
+# The entity will only be revealed again once the viewer comes within <= show-distance-y.
+# (This prevents packet thrashing / flicker when jumping or standing on threshold).
+show-distance-y: 42.0
 
-# Logs interception/culling metrics to console. Leave off in production -
-# this runs on the packet thread for every chunk packet sent.
-debug-mode: false
+# Scan interval in server ticks (20 ticks = 1 second, 4 ticks = 0.2s)
+check-interval-ticks: 4
 
-# Radius, in chunks, around a player to force a chunk resend when they
-# cross a sub-chunk section boundary, so newly-dug-into sections load in.
-refresh-radius: 3
+# Entity Types to Hide
+targets:
+  # Hide players who are 48 blocks below (Protects against Player ESP / Tracers)
+  hide-players: true
 
-# Minimum milliseconds between forced chunk refreshes for the same player,
-# to avoid flooding the network thread while a player digs straight down.
-refresh-cooldown-ms: 250
-refresh-debounce-ticks: 6
-refresh-chunks-per-tick: 6
+  # Hide monsters (Zombies, Skeletons, Creepers, etc.)
+  hide-monsters: true
 
-# Instead of leaving pure void directly below the cutoff, paint a single
-# solid layer of "block" right at the boundary - like DonutSMP and most
-# other anti-xray plugins do. A hard empty void below a flat plane is
-# itself a giveaway that something is being hidden right there; a solid
-# floor just looks like normal terrain. Only the one section immediately
-# below the cutoff gets this treatment - everything deeper stays plain
-# void, which you'd never see anyway since the floor blocks the view.
-fake-floor:
-  enabled: true
-  # Any valid block ID, e.g. minecraft:deepslate, minecraft:stone,
-  # minecraft:bedrock. Deepslate is the default because it's what
-  # naturally generates around typical cutoff depths, so it doesn't look
-  # out of place.
-  block: minecraft:deepslate
+  # Hide passive animals (Cows, Sheep, Horses, etc.)
+  hide-animals: false
 
-# Stripping the chunk packet only sanitises the FIRST snapshot of a chunk.
-# Every block that changes afterwards is sent as its own block update, and
-# those updates were not checked against the cutoff - so anything that
-# moves below the line gets re-drawn on the client one block at a time,
-# floating inside the supposedly empty space. Flowing water is the obvious
-# symptom (blue veins hanging in the void when viewed with freecam), but
-# the same gap leaks pistons, doors, crops, redstone and block breaking.
-# This filter drops those packets when they target anything below the
-# viewer's cutoff. Leave it on unless you are debugging.
-block-update-filter:
-  enabled: true
+  # Hide other entities (Minecarts with chest, armor stands, etc.)
+  hide-misc: true
+
+# Sound Leaks Protection
+# Prevents hack clients from locating underground players via localized sound packets
+dampen-underground-sounds: true
+
+# Debug mode for server console logging
+debug: false
