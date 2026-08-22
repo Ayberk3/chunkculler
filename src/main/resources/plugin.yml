@@ -1,20 +1,23 @@
-name: SubChunkCuller
-version: '1.0.2'
-main: dev.ayberk.subchunkculler.Main
+name: VerticalAntiESP
+version: '1.0.0'
+main: com.sektor.verticalantiesp.VerticalAntiESP
 api-version: '1.20'
-depend: [packetevents]
-author: Ayberk
-description: >
-  Vertical sub-chunk culling - strips chunk sections below a configurable
-  cutoff from outgoing chunk packets so ESP/X-Ray clients never receive the
-  block data for underground bases in the first place.
-commands:
-  subchunkculler:
-    description: Reloads SubChunkCuller's config.yml without a server restart.
-    usage: /<command> reload
-    aliases: [scc]
-    permission: subchunkculler.reload
+author: Ayberk & DeepMind
+description: Ultra-high-performance zero-leak vertical entity culler & anti-ESP.
+depend:
+  - packetevents
+
 permissions:
-  subchunkculler.reload:
-    description: Allows reloading SubChunkCuller's config
+  verticalantiesp.bypass:
+    description: Allows player to bypass entity hiding (see all entities).
     default: op
+  verticalantiesp.admin:
+    description: Allows player to reload the plugin.
+    default: op
+
+commands:
+  verticalantiesp:
+    description: Main command for VerticalAntiESP
+    aliases: [vaesp]
+    permission: verticalantiesp.admin
+    usage: /<command> [reload]
