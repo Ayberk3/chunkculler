@@ -4,7 +4,6 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.*;
 import org.bukkit.entity.Player;
 
@@ -114,13 +113,26 @@ public final class EntityPacketListener extends PacketListenerAbstract {
             }
         } else if (plugin.getConfigManager().isDampenUndergroundSounds() && packetType == PacketType.Play.Server.SOUND_EFFECT) {
             try {
-                WrapperPlayServerSoundEffect soundPacket = new WrapperPlayServerSoundEffect(event);
-                Vector3i pos = soundPacket.getPosition();
-                if (pos != null) {
-                    double soundY = pos.getY();
-                    double viewerY = player.getLocation().getY();
-                    if ((viewerY - soundY) >= plugin.getConfigManager().getHideDistanceY()) {
-                        event.setCancelled(true);
+                WrapperPlayServerSoundEffect sound = new WrapperPlayServerSoundEffect(event);
+                java.lang.reflect.Method m = null;
+                for (java.lang.reflect.Method method : sound.getClass().getMethods()) {
+                    if (method.getName().equals("getEffectPosition") || method.getName().equals("getFixedPosition") || method.getName().equals("getPosition")) {
+                        m = method;
+                        break;
+                    }
+                }
+                if (m != null) {
+                    Object posObj = m.invoke(sound);
+                    if (posObj != null) {
+                        double soundY = 0;
+                        if (posObj instanceof com.github.retrooper.packetevents.util.Vector3i v3i) {
+                            soundY = v3i.getY();
+                        } else if (posObj instanceof com.github.retrooper.packetevents.util.Vector3d v3d) {
+                            soundY = v3d.getY();
+                        }
+                        if ((player.getLocation().getY() - soundY) >= plugin.getConfigManager().getHideDistanceY()) {
+                            event.setCancelled(true);
+                        }
                     }
                 }
             } catch (Throwable ignored) {
