@@ -30,29 +30,36 @@ public final class EntityTrackingManager {
         return set != null && set.contains(entityId);
     }
 
+    public void hideEntityId(Player viewer, int entityId) {
+        if (viewer == null || !viewer.isOnline()) {
+            return;
+        }
+
+        Set<Integer> set = hiddenEntities.computeIfAbsent(viewer.getUniqueId(), k -> ConcurrentHashMap.newKeySet());
+        if (set.add(entityId)) {
+            WrapperPlayServerDestroyEntities destroyPacket = new WrapperPlayServerDestroyEntities(entityId);
+            PacketEvents.getAPI().getPlayerManager().sendPacket(viewer, destroyPacket);
+        }
+    }
+
     public void hideEntity(Player viewer, Entity target) {
         if (viewer == null || !viewer.isOnline() || target == null || !target.isValid()) {
             return;
         }
 
-        Set<Integer> set = hiddenEntities.computeIfAbsent(viewer.getUniqueId(), k -> ConcurrentHashMap.newKeySet());
         int entityId = target.getEntityId();
+        hideEntityId(viewer, entityId);
 
-        if (set.add(entityId)) {
-            WrapperPlayServerDestroyEntities destroyPacket = new WrapperPlayServerDestroyEntities(entityId);
-            PacketEvents.getAPI().getPlayerManager().sendPacket(viewer, destroyPacket);
+        // Hide all passengers
+        for (Entity passenger : target.getPassengers()) {
+            hideEntity(viewer, passenger);
+        }
 
-            // Hide all passengers
-            for (Entity passenger : target.getPassengers()) {
-                hideEntity(viewer, passenger);
-            }
-
-            // If inside a vehicle, hide the vehicle as well
-            if (target.isInsideVehicle()) {
-                Entity vehicle = target.getVehicle();
-                if (vehicle != null) {
-                    hideEntity(viewer, vehicle);
-                }
+        // If inside a vehicle, hide the vehicle as well
+        if (target.isInsideVehicle()) {
+            Entity vehicle = target.getVehicle();
+            if (vehicle != null) {
+                hideEntity(viewer, vehicle);
             }
         }
     }
@@ -136,7 +143,7 @@ public final class EntityTrackingManager {
             return false;
         }
 
-        // Never hide in-flight projectiles
+        // Never hide in-flight projectiles or falling gravity blocks
         if (entity instanceof Projectile || entity instanceof FallingBlock || entity instanceof Item) {
             return false;
         }
