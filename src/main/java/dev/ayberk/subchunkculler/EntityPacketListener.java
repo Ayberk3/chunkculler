@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.*;
 import org.bukkit.entity.Player;
 
@@ -111,22 +112,18 @@ public final class EntityPacketListener extends PacketListenerAbstract {
             if (tracking.isEntityHidden(viewerUUID, packet.getEntityId())) {
                 event.setCancelled(true);
             }
-        } else if (plugin.getConfigManager().isDampenUndergroundSounds() &&
-                (packetType == PacketType.Play.Server.SOUND_EFFECT || packetType == PacketType.Play.Server.NAMED_SOUND_EFFECT)) {
-            if (packetType == PacketType.Play.Server.SOUND_EFFECT) {
+        } else if (plugin.getConfigManager().isDampenUndergroundSounds() && packetType == PacketType.Play.Server.SOUND_EFFECT) {
+            try {
                 WrapperPlayServerSoundEffect soundPacket = new WrapperPlayServerSoundEffect(event);
-                double soundY = soundPacket.getFixedPosition().getY();
-                double viewerY = player.getLocation().getY();
-                if ((viewerY - soundY) >= plugin.getConfigManager().getHideDistanceY()) {
-                    event.setCancelled(true);
+                Vector3i pos = soundPacket.getPosition();
+                if (pos != null) {
+                    double soundY = pos.getY();
+                    double viewerY = player.getLocation().getY();
+                    if ((viewerY - soundY) >= plugin.getConfigManager().getHideDistanceY()) {
+                        event.setCancelled(true);
+                    }
                 }
-            } else {
-                WrapperPlayServerNamedSoundEffect soundPacket = new WrapperPlayServerNamedSoundEffect(event);
-                double soundY = soundPacket.getFixedPosition().getY();
-                double viewerY = player.getLocation().getY();
-                if ((viewerY - soundY) >= plugin.getConfigManager().getHideDistanceY()) {
-                    event.setCancelled(true);
-                }
+            } catch (Throwable ignored) {
             }
         }
     }
