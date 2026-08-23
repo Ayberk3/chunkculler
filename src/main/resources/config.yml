@@ -4,29 +4,37 @@
 # ==========================================================
 
 # 1. SubChunk (Block & Section) Culling Settings
+# Number of 16-block subchunks below the player to keep visible.
+# Example: If set to 1 or 2, everything at and above the player's level
+# is 100% visible horizontally across the entire view distance.
+# Only sections strictly below (playerSectionY - sub-chunks-below) are culled.
 sub-chunks-below: 2
-absolute-cutoff-y: 0
+
+# Worlds where SubChunkCuller is enabled
 enabled-worlds:
   - world
   - world_nether
   - world_the_end
 
-refresh-radius: 3
+# Chunk refresh settings (automatically adapts to player view-distance)
+refresh-radius: 8
 refresh-cooldown-ms: 250
-refresh-debounce-ticks: 6
-refresh-chunks-per-tick: 6
+refresh-debounce-ticks: 4
+refresh-chunks-per-tick: 12
 
+# Fake floor (disabled by default for clean natural void)
 fake-floor:
   enabled: false
   block: "minecraft:deepslate"
 
+# Filter block updates below cutoff
 block-update-filter:
   enabled: true
 
 # 2. Zero-Leak Vertical Entity Anti-ESP Settings
 entity-culler:
   enabled: true
-  # Scan interval in ticks (2 ticks = 0.1s for ultra-fast response)
+  # Scan interval in ticks (2 ticks = 0.1s)
   check-interval-ticks: 2
 
   # Dampen deep underground sound packets (Sound ESP prevention)
