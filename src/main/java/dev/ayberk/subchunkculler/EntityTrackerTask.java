@@ -22,44 +22,47 @@ public final class EntityTrackerTask extends BukkitRunnable {
             return;
         }
 
-        ConfigManager config = plugin.getConfigManager();
-        EntityTrackingManager trackingManager = plugin.getEntityTrackingManager();
-
         for (Player viewer : Bukkit.getOnlinePlayers()) {
-            if (!viewer.isOnline() || viewer.hasPermission("subchunkculler.bypass")) {
+            updatePlayer(viewer);
+        }
+    }
+
+    public void updatePlayer(Player viewer) {
+        if (viewer == null || !viewer.isOnline() || viewer.hasPermission("subchunkculler.bypass")) {
+            return;
+        }
+
+        ConfigManager config = plugin.getConfigManager();
+        if (!config.isWorldEnabled(viewer.getWorld().getName())) {
+            return;
+        }
+
+        EntityTrackingManager trackingManager = plugin.getEntityTrackingManager();
+        Location viewerLoc = viewer.getLocation();
+        Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewer.getUniqueId());
+        if (viewerSectionY == null) {
+            viewerSectionY = viewerLoc.getBlockY() >> 4;
+        }
+
+        int cutoffSection = config.computeCutoffSection(viewerSectionY);
+        int cutoffBlockY = cutoffSection << 4;
+
+        Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
+                viewerLoc, 96.0, 128.0, 96.0, trackingManager::isTargetApplicable
+        );
+
+        for (Entity target : nearbyEntities) {
+            if (target.getEntityId() == viewer.getEntityId()) {
                 continue;
             }
 
-            if (!config.isWorldEnabled(viewer.getWorld().getName())) {
-                continue;
-            }
+            double targetY = target.getLocation().getY();
 
-            Location viewerLoc = viewer.getLocation();
-            Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewer.getUniqueId());
-            if (viewerSectionY == null) {
-                viewerSectionY = viewerLoc.getBlockY() >> 4;
-            }
-
-            int cutoffSection = config.computeCutoffSection(viewerSectionY);
-            int cutoffBlockY = cutoffSection << 4;
-
-            Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
-                    viewerLoc, 96.0, 128.0, 96.0, trackingManager::isTargetApplicable
-            );
-
-            for (Entity target : nearbyEntities) {
-                if (target.getEntityId() == viewer.getEntityId()) {
-                    continue;
-                }
-
-                double targetY = target.getLocation().getY();
-
-                // If entity is below the culled subchunk cutoff -> HIDE immediately!
-                if (targetY < cutoffBlockY) {
-                    trackingManager.hideEntity(viewer, target);
-                } else {
-                    trackingManager.showEntity(viewer, target);
-                }
+            // If entity is below the culled subchunk cutoff -> HIDE immediately!
+            if (targetY < cutoffBlockY) {
+                trackingManager.hideEntity(viewer, target);
+            } else {
+                trackingManager.showEntity(viewer, target);
             }
         }
     }
