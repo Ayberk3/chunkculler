@@ -9,14 +9,10 @@ import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
 import com.github.retrooper.packetevents.protocol.world.chunk.TileEntity;
 import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
-import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
-import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
 import com.github.retrooper.packetevents.protocol.world.biome.Biomes;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import org.bukkit.entity.Player;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 public final class ChunkPacketListener extends PacketListenerAbstract {
@@ -24,8 +20,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
     private static final TileEntity[] EMPTY_TILE_ENTITIES = new TileEntity[0];
     private final ConfigManager config;
     private final Logger logger;
-    private final Map<ClientVersion, WrappedBlockState> floorStateCache = new ConcurrentHashMap<>();
-    private String cachedFloorBlockName = "";
 
     public ChunkPacketListener(ConfigManager config) {
         super(PacketListenerPriority.NORMAL);
@@ -51,12 +45,11 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
 
         Integer playerSectionY = Main.VIEWER_SECTION_Y.get(player.getUniqueId());
         if (playerSectionY == null) {
-            playerSectionY = config.getAbsoluteCutoffSection();
+            playerSectionY = player.getLocation().getBlockY() >> 4;
+            Main.VIEWER_SECTION_Y.put(player.getUniqueId(), playerSectionY);
         }
 
         final int cutoffSection = config.computeCutoffSection(playerSectionY);
-        final int floorSectionY = cutoffSection - 1;
-        final boolean drawFloor = config.isFakeFloorEnabled();
 
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
         Column column = wrapper.getColumn();
@@ -72,14 +65,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
                 continue;
             }
 
-            // Fake floor section (exactly at floorSectionY, top block layer y=15)
-            if (drawFloor && actualSectionY == floorSectionY) {
-                chunks[i] = buildFloorSection(clientVersion);
-                strippedCount++;
-                continue;
-            }
-
-            // Empty section below floor
             if (!isEmptySection(chunks[i])) {
                 chunks[i] = buildEmptySection(clientVersion);
                 strippedCount++;
@@ -146,44 +131,5 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         section.set(0, 0, 0, 0);
         section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
         return section;
-    }
-
-    private BaseChunk buildFloorSection(ClientVersion clientVersion) {
-        Chunk_v1_18 section = new Chunk_v1_18();
-        WrappedBlockState floorState = resolveFloorState(clientVersion);
-        int stateId = floorState.getGlobalId();
-
-        for (int x = 0; x < 16; x++) {
-            for (int z = 0; z < 16; z++) {
-                section.set(x, 15, z, stateId);
-            }
-        }
-        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
-        return section;
-    }
-
-    private WrappedBlockState resolveFloorState(ClientVersion clientVersion) {
-        String configuredBlock = config.getFakeFloorBlock();
-        if (!configuredBlock.equals(cachedFloorBlockName)) {
-            floorStateCache.clear();
-            cachedFloorBlockName = configuredBlock;
-        }
-        return floorStateCache.computeIfAbsent(clientVersion, cv -> {
-            try {
-                WrappedBlockState state = WrappedBlockState.getByString(cv, configuredBlock);
-                if (state != null) {
-                    return state;
-                }
-            } catch (Exception ignored) {
-            }
-            try {
-                WrappedBlockState fallback = WrappedBlockState.getByString(cv, "minecraft:deepslate");
-                if (fallback != null) {
-                    return fallback;
-                }
-            } catch (Exception ignored) {
-            }
-            return WrappedBlockState.getDefaultState(cv, StateTypes.DEEPSLATE);
-        });
     }
 }
