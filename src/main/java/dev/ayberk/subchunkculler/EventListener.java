@@ -1,6 +1,7 @@
 package dev.ayberk.subchunkculler;
 
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -40,9 +41,14 @@ public final class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
-        Player player = event.getPlayer();
-        if (event.getFrom().distanceSquared(event.getTo()) > 64) {
-            plugin.getEntityTrackingManager().removeViewer(player.getUniqueId());
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        if (to == null) {
+            return;
+        }
+
+        if (from.getWorld() != to.getWorld() || from.distanceSquared(to) > 64.0) {
+            plugin.getEntityTrackingManager().removeViewer(event.getPlayer().getUniqueId());
         }
     }
 
