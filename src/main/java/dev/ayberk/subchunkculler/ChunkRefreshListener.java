@@ -22,10 +22,23 @@ public final class ChunkRefreshListener implements Listener {
     private final Map<UUID, Long> lastRefreshAt = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> pendingDebounce = new ConcurrentHashMap<>();
     private final Map<UUID, Long> pendingSince = new ConcurrentHashMap<>();
-    private static final long MAX_DEBOUNCE_MS = 1500L;
+    private static final long MAX_DEBOUNCE_MS = 1000L;
 
-    private final ArrayDeque<long[]> refreshQueue = new ArrayDeque<>();
-    private final Map<Long, World> chunkWorlds = new ConcurrentHashMap<>();
+    private static final class RefreshEntry {
+        final Player player;
+        final World world;
+        final int cx;
+        final int cz;
+
+        RefreshEntry(Player player, World world, int cx, int cz) {
+            this.player = player;
+            this.world = world;
+            this.cx = cx;
+            this.cz = cz;
+        }
+    }
+
+    private final ArrayDeque<RefreshEntry> refreshQueue = new ArrayDeque<>();
     private BukkitTask drainTask;
 
     public ChunkRefreshListener(Main plugin, ConfigManager config) {
@@ -51,24 +64,24 @@ public final class ChunkRefreshListener implements Listener {
         pendingDebounce.clear();
         pendingSince.clear();
         refreshQueue.clear();
-        chunkWorlds.clear();
     }
 
     private void drainRefreshQueue() {
         int budget = config.getRefreshChunksPerTick();
         for (int i = 0; i < budget; i++) {
-            long[] entry = refreshQueue.poll();
+            RefreshEntry entry = refreshQueue.poll();
             if (entry == null) {
                 return;
             }
-            long worldKey = entry[0];
-            int cx = (int) entry[1];
-            int cz = (int) entry[2];
 
-            World world = chunkWorlds.get(worldKey);
-            if (world != null && world.isChunkLoaded(cx, cz)) {
-                //noinspection deprecation
-                world.refreshChunk(cx, cz);
+            Player player = entry.player;
+            if (player != null && player.isOnline() && entry.world.isChunkLoaded(entry.cx, entry.cz)) {
+                boolean sent = ChunkResender.resendChunk(player, entry.world, entry.cx, entry.cz);
+                if (!sent) {
+                    // Fallback to paper chunk refresh if available
+                    //noinspection deprecation
+                    entry.world.refreshChunk(entry.cx, entry.cz);
+                }
             }
         }
     }
@@ -131,10 +144,6 @@ public final class ChunkRefreshListener implements Listener {
             return;
         }
 
-        if (config.isDebugMode()) {
-            plugin.getLogger().info(player.getName() + " teleported - forcing full chunk refresh");
-        }
-
         refreshChunksAround(player, to);
         plugin.updatePlayerEntities(player);
     }
@@ -148,19 +157,20 @@ public final class ChunkRefreshListener implements Listener {
         UUID id = player.getUniqueId();
         Integer oldSection = Main.VIEWER_SECTION_Y.put(id, newSection);
 
-        if (oldSection == null || oldSection.intValue() == newSection) {
+        if (oldSection == null) {
             return;
         }
 
-        if (config.isDebugMode()) {
-            plugin.getLogger().info(player.getName() + " crossed sub-chunk section "
-                    + oldSection + " -> " + newSection);
-        }
+        if (newSection != oldSection.intValue()) {
+            if (config.isDebugMode()) {
+                plugin.getLogger().info(player.getName() + " crossed sub-chunk section "
+                        + oldSection + " -> " + newSection);
+            }
 
-        // Instantly update entity visibility when crossing section boundary
-        plugin.updatePlayerEntities(player);
+            // Immediately update entity tracking
+            plugin.updatePlayerEntities(player);
 
-        if (newSection < oldSection) {
+            // Re-send chunks when crossing section boundary
             scheduleDebouncedRefresh(player);
         }
     }
@@ -202,9 +212,6 @@ public final class ChunkRefreshListener implements Listener {
 
     private void queueRefreshAround(Player player, Location around) {
         World world = around.getWorld();
-        long worldKey = world.getUID().getMostSignificantBits() ^ world.getUID().getLeastSignificantBits();
-        chunkWorlds.putIfAbsent(worldKey, world);
-
         int centerX = around.getBlockX() >> 4;
         int centerZ = around.getBlockZ() >> 4;
         int radius = config.getRefreshRadius();
@@ -214,7 +221,7 @@ public final class ChunkRefreshListener implements Listener {
                 int cx = centerX + dx;
                 int cz = centerZ + dz;
                 if (world.isChunkLoaded(cx, cz)) {
-                    refreshQueue.add(new long[]{worldKey, cx, cz});
+                    refreshQueue.add(new RefreshEntry(player, world, cx, cz));
                 }
             }
         }
