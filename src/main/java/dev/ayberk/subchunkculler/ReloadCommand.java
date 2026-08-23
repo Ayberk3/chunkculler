@@ -1,12 +1,10 @@
 package dev.ayberk.subchunkculler;
 
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,26 +21,22 @@ public final class ReloadCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("subchunkculler.admin")) {
-            sender.sendMessage(ChatColor.RED + "You don't have permission to execute this command.");
+            sender.sendMessage("§cYou do not have permission to use this command.");
             return true;
         }
 
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             config.reload();
             plugin.startEntityTrackerTask();
-
-            sender.sendMessage(ChatColor.GREEN + "[SubChunkCuller] Config reloaded successfully!");
-            sender.sendMessage(ChatColor.GRAY + " - SubChunks Below: " + ChatColor.YELLOW + config.getSubChunksBelow());
-            sender.sendMessage(ChatColor.GRAY + " - Absolute Cutoff Y: " + ChatColor.YELLOW + (config.getAbsoluteCutoffSection() << 4));
-            sender.sendMessage(ChatColor.GRAY + " - Fake Floor: " + ChatColor.YELLOW + config.isFakeFloorEnabled() + " (" + config.getFakeFloorBlock() + ")");
-            sender.sendMessage(ChatColor.GRAY + " - Entity Culling: " + ChatColor.YELLOW + (config.isEntityCullerEnabled() ? "Enabled" : "Disabled"));
+            sender.sendMessage("§8[§bSubChunkCuller§8] §aReload complete! §7(SubChunks: §f"
+                    + config.getSubChunksBelow() + "§7, Radius: §f"
+                    + config.getRefreshRadius() + "§7, Entities: §f"
+                    + config.isEntityCullerEnabled() + "§7, Fake Floor: §f"
+                    + config.isFakeFloorEnabled() + "§7)");
             return true;
         }
 
-        sender.sendMessage(ChatColor.GOLD + "=== SubChunkCuller v" + plugin.getDescription().getVersion() + " ===");
-        sender.sendMessage(ChatColor.YELLOW + "/" + label + " reload " + ChatColor.GRAY + "- Reload configuration");
-        sender.sendMessage(ChatColor.GRAY + "Status: SubChunks Below=" + config.getSubChunksBelow()
-                + ", Entity Culler=" + (config.isEntityCullerEnabled() ? "ON" : "OFF"));
+        sender.sendMessage("§8[§bSubChunkCuller§8] §7Usage: §f/" + label + " reload");
         return true;
     }
 
@@ -51,15 +45,11 @@ public final class ReloadCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("subchunkculler.admin")) {
             return Collections.emptyList();
         }
-
         if (args.length == 1) {
-            List<String> completions = new ArrayList<>();
             if ("reload".startsWith(args[0].toLowerCase())) {
-                completions.add("reload");
+                return Collections.singletonList("reload");
             }
-            return completions;
         }
-
         return Collections.emptyList();
     }
 }
