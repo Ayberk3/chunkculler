@@ -30,23 +30,23 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SubChunkCuller-jar
-          path: target/*.jar
+          path: target/SubChunkCuller-*.jar
 
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.0
-          name: "SubChunkCuller v1.0.0 (Zero-Leak Anti-ESP Release)"
+          tag_name: v1.0.1
+          name: "SubChunkCuller v1.0.1 (Void Entity & SubChunk Sync)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.0
+            ## 🚀 SubChunkCuller v1.0.1
 
             ### Yenilikler & Çözümler:
+            - **Void Entity Synchronization:** Silinen subchunk ve mağara bölümlerindeki (Zombi, İskelet, Creeper, Oyuncular vb.) TÜM entity'ler boşlukta görünmeyecek şekilde otomatik gizlenir.
             - **SubChunk Culling:** Oyuncunun altındaki mağara/blok bölümlerini siler.
-            - **Zero-Leak Vertical Anti-ESP:** 48 blok altındaki tüm oyuncu ve yaratıkları hilelerden tamamen gizler.
-            - **Sıfır Sızıntı (Zero-Leak):** Gizli oyuncuların `TELEPORT`, `REL_MOVE`, `METADATA`, `EQUIPMENT` ve ses paketlerini tamamen durdurur (Ghost entity / Tracer oluşamaz).
-            - **TAB Koruması:** `TAB` listesi ve skinler bozulmaz.
+            - **Zero-Leak Vertical Anti-ESP:** Silinen alanlardaki entity'lerin hareket, teleport, ekipman ve ses paketleri tamamen durdurulur (Ghost Entity oluşamaz).
+            - **TAB & Skin Koruması:** `TAB` listesi ve skinler bozulmaz.
             - **Ok / Fırlatılabilir Koruması:** Fırlatılan oklar ve inciler havada silinmez.
             - **Binek Senkronizasyonu:** At ve Bot gibi araçlara binen oyuncular yaklaşıldığında tam senkronize spawn edilir.
-          files: target/*.jar
+          files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
