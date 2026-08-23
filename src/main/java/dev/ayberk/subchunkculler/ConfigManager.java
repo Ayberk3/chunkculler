@@ -32,13 +32,13 @@ public final class ConfigManager implements Listener {
 
     // Entity Culler Settings
     private volatile boolean entityCullerEnabled;
-    private volatile double hideDistanceY;
-    private volatile double showDistanceY;
     private volatile int checkIntervalTicks;
     private volatile boolean hidePlayers;
     private volatile boolean hideMonsters;
     private volatile boolean hideAnimals;
     private volatile boolean hideMisc;
+    private volatile boolean bypassNpcs;
+    private volatile boolean bypassHolograms;
     private volatile boolean dampenUndergroundSounds;
 
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
@@ -74,18 +74,14 @@ public final class ConfigManager implements Listener {
 
         // 2. Entity Culler
         this.entityCullerEnabled = cfg.getBoolean("entity-culler.enabled", true);
-        this.hideDistanceY = cfg.getDouble("entity-culler.hide-distance-y", 48.0);
-        this.showDistanceY = cfg.getDouble("entity-culler.show-distance-y", 42.0);
         this.checkIntervalTicks = Math.max(1, cfg.getInt("entity-culler.check-interval-ticks", 4));
         this.hidePlayers = cfg.getBoolean("entity-culler.targets.hide-players", true);
         this.hideMonsters = cfg.getBoolean("entity-culler.targets.hide-monsters", true);
         this.hideAnimals = cfg.getBoolean("entity-culler.targets.hide-animals", false);
         this.hideMisc = cfg.getBoolean("entity-culler.targets.hide-misc", true);
+        this.bypassNpcs = cfg.getBoolean("entity-culler.targets.bypass-npcs", true);
+        this.bypassHolograms = cfg.getBoolean("entity-culler.targets.bypass-holograms", true);
         this.dampenUndergroundSounds = cfg.getBoolean("entity-culler.dampen-underground-sounds", true);
-
-        if (this.showDistanceY >= this.hideDistanceY) {
-            this.showDistanceY = this.hideDistanceY - 4.0;
-        }
 
         worldMinSection.clear();
         for (World world : plugin.getServer().getWorlds()) {
@@ -168,14 +164,6 @@ public final class ConfigManager implements Listener {
         return entityCullerEnabled;
     }
 
-    public double getHideDistanceY() {
-        return hideDistanceY;
-    }
-
-    public double getShowDistanceY() {
-        return showDistanceY;
-    }
-
     public int getCheckIntervalTicks() {
         return checkIntervalTicks;
     }
@@ -194,6 +182,14 @@ public final class ConfigManager implements Listener {
 
     public boolean isHideMisc() {
         return hideMisc;
+    }
+
+    public boolean isBypassNpcs() {
+        return bypassNpcs;
+    }
+
+    public boolean isBypassHolograms() {
+        return bypassHolograms;
     }
 
     public boolean isDampenUndergroundSounds() {
