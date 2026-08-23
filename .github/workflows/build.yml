@@ -36,16 +36,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.3
-          name: "SubChunkCuller v1.0.3 (Crash Fix & Protocol Safe Release)"
+          tag_name: v1.0.4
+          name: "SubChunkCuller v1.0.4 (100% Airtight, Zero-Leak & Rock Solid)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.3
+            ## 🚀 SubChunkCuller v1.0.4 (Airtight Master Release)
 
-            ### 🔧 Düzeltmeler:
-            - **Crash & Disconnect Fix:** Netty chunk serileştirmesindeki biyom/palet bozulması düzeltildi. Girişteki çökme ve bağlantı kopmaları tamamen engellendi.
-            - **Fake Floor (Deepslate) Güvenli Render:** Protokole uygun tekil biyom paleti ve global state ID ile sıfır çökme garantili sahte zemin.
-            - **Tam Void & Entity Senkronizasyonu:** Silinen alandaki tüm moblar, oyuncular ve vagonlar gizlenir.
-            - **Çoklu Binek ve Yolcu Senkronizasyonu:** Bot ve vagon yolcuları tam senkron.
-            - **Patlama & TNT Koruması:** Yeraltı patlamaları filtrelenir.
+            ### 🛡️ Kapsamlı Güvenlik, Performans ve Kararlılık İyileştirmeleri:
+            - **Async Netty Thread Safety:** Paket filtreleme sırasında asenkron dünya/varlık erişimi kaldırıldı (`hideEntityId`), thread çakışmaları %100 önlendi.
+            - **Cross-World Distance Fix:** Dünyalar arası ışınlanmalarda (Overworld -> Nether/End) oluşabilecek Bukkit mesafe hatası düzeltildi.
+            - **Tam Paket Kapsamı (100% Anti-ESP):** `ENTITY_SOUND_EFFECT`, `HURT_ANIMATION`, `DAMAGE_EVENT`, `ENTITY_EFFECT`, `REMOVE_ENTITY_EFFECT` paketleri de filtreye eklendi; hileciler gizli yaratıkları can/hasar/iksir/ses paketleriyle bile tespit edemez.
+            - **Crash & Disconnect Fix:** Netty chunk serileştirmesindeki biyom/palet yapısı standart protokolle optimize edildi.
+            - **Patlama & TNT Koruması:** Yeraltı patlama paketleri filtrelenir.
+            - **Fake Floor (Deepslate) Güvenli Render:** Kararlı tekil biyom paletiyle çökmesiz sahte zemin.
+            - **TAB & Skin Koruması:** `TAB` listesi ve skinler bozulmaz.
           files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
