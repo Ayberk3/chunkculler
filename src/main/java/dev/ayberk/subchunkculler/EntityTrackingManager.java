@@ -42,8 +42,17 @@ public final class EntityTrackingManager {
             WrapperPlayServerDestroyEntities destroyPacket = new WrapperPlayServerDestroyEntities(entityId);
             PacketEvents.getAPI().getPlayerManager().sendPacket(viewer, destroyPacket);
 
+            // Hide all passengers
             for (Entity passenger : target.getPassengers()) {
                 hideEntity(viewer, passenger);
+            }
+
+            // If inside a vehicle, hide the vehicle as well
+            if (target.isInsideVehicle()) {
+                Entity vehicle = target.getVehicle();
+                if (vehicle != null) {
+                    hideEntity(viewer, vehicle);
+                }
             }
         }
     }
@@ -133,6 +142,23 @@ public final class EntityTrackingManager {
         }
 
         ConfigManager cfg = plugin.getConfigManager();
+
+        // Check NPC bypass (Citizens, FancyNpcs, etc.)
+        if (cfg.isBypassNpcs()) {
+            if (entity.hasMetadata("NPC") || entity.hasMetadata("shopkeeper") || entity.getScoreboardTags().contains("fancynpcs:npc")) {
+                return false;
+            }
+        }
+
+        // Check Hologram bypass (DecentHolograms, HolographicDisplays, etc.)
+        if (cfg.isBypassHolograms()) {
+            if (entity instanceof ArmorStand stand) {
+                if (stand.isMarker() || stand.getScoreboardTags().contains("dh_hologram") || stand.hasMetadata("dh_hologram")) {
+                    return false;
+                }
+            }
+        }
+
         if (entity instanceof Player) {
             return cfg.isHidePlayers();
         }
