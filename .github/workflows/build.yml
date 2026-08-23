@@ -36,18 +36,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.2
-          name: "SubChunkCuller v1.0.2 (Ultimate Stable & 100% Leak-Free)"
+          tag_name: v1.0.3
+          name: "SubChunkCuller v1.0.3 (Crash Fix & Protocol Safe Release)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.2 (Ultimate Stable Release)
+            ## 🚀 SubChunkCuller v1.0.3
 
-            ### 🔥 Tüm Düzeltmeler ve Özellikler:
-            - **Fake Floor (Deepslate Katmanı):** 64 biyom paleti ve global block state ID desteğiyle sahte zemin pürüzsüzce render edilir.
-            - **Tam Void & Entity Senkronizasyonu:** Silinen mağara ve chunk bölümlerindeki tüm moblar (Zombi, İskelet, Creeper, Örümcek), oyuncular ve vagonlar boşlukta görünmez.
-            - **Çoklu Binek ve Yolcu Senkronizasyonu:** Bot ve vagonlara binen varlıklar araçlarıyla birlikte senkron gizlenir/gösterilir.
-            - **Şehir NPC & Hologram Koruması:** `FancyNpcs` ve `DecentHolograms` varlıkları yer altında olsa dahi korunur.
-            - **Patlama & TNT Koruması:** Derindeki patlama paketleri (`EXPLOSION`) filtrelenerek TNT radar sızıntıları engellendi.
-            - **Sıfır Raycast / Sıfır Lag:** Blok çakışma hesabı yapmaz, TPS etkisi %0.00'dır.
-            - **TAB & Skin Koruması:** `TAB` listesi ve skinler bozulmaz.
+            ### 🔧 Düzeltmeler:
+            - **Crash & Disconnect Fix:** Netty chunk serileştirmesindeki biyom/palet bozulması düzeltildi. Girişteki çökme ve bağlantı kopmaları tamamen engellendi.
+            - **Fake Floor (Deepslate) Güvenli Render:** Protokole uygun tekil biyom paleti ve global state ID ile sıfır çökme garantili sahte zemin.
+            - **Tam Void & Entity Senkronizasyonu:** Silinen alandaki tüm moblar, oyuncular ve vagonlar gizlenir.
+            - **Çoklu Binek ve Yolcu Senkronizasyonu:** Bot ve vagon yolcuları tam senkron.
+            - **Patlama & TNT Koruması:** Yeraltı patlamaları filtrelenir.
           files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
