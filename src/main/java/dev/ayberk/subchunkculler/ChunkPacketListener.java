@@ -10,7 +10,6 @@ import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
 import com.github.retrooper.packetevents.protocol.world.chunk.TileEntity;
 import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
-import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.bukkit.Material;
@@ -47,7 +46,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             cachedFloorBlockId = SpigotConversionUtil.fromBukkitBlockData(material.createBlockData()).getGlobalId();
         } catch (Throwable t) {
             try {
-                cachedFloorBlockId = StateTypes.DEEPSLATE.createBlockData().getGlobalId();
+                cachedFloorBlockId = SpigotConversionUtil.fromBukkitBlockData(Material.DEEPSLATE.createBlockData()).getGlobalId();
             } catch (Throwable ignored) {
                 cachedFloorBlockId = 1;
             }
