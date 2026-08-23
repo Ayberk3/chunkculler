@@ -72,12 +72,14 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
                 continue;
             }
 
+            // Fake Floor Section (Exactly 1 section below cutoff, top row y=15)
             if (drawFloor && actualSectionY == floorSectionY) {
-                chunks[i] = buildFloorSection(clientVersion);
+                chunks[i] = applyFloorToSection(chunks[i], clientVersion);
                 strippedCount++;
                 continue;
             }
 
+            // Fully stripped sections below fake floor
             if (!isEmptySection(chunks[i])) {
                 chunks[i] = buildEmptySection(clientVersion);
                 strippedCount++;
@@ -141,20 +143,43 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
 
     private BaseChunk buildEmptySection(ClientVersion clientVersion) {
         Chunk_v1_18 section = new Chunk_v1_18();
-        section.set(0, 0, 0, 0);
-        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+        int biomeId = Biomes.PLAINS.getId(clientVersion);
+        for (int bx = 0; bx < 4; bx++) {
+            for (int by = 0; by < 4; by++) {
+                for (int bz = 0; bz < 4; bz++) {
+                    section.getBiomeData().set(bx, by, bz, biomeId);
+                }
+            }
+        }
         return section;
     }
 
-    private BaseChunk buildFloorSection(ClientVersion clientVersion) {
-        Chunk_v1_18 section = new Chunk_v1_18();
+    private BaseChunk applyFloorToSection(BaseChunk existing, ClientVersion clientVersion) {
         WrappedBlockState floorState = resolveFloorState(clientVersion);
+        int stateId = floorState.getGlobalId();
+        int biomeId = Biomes.PLAINS.getId(clientVersion);
+
+        BaseChunk section = existing != null ? existing : new Chunk_v1_18();
+
+        // 1. Clear all blocks below y=15 and place floor block at y=15
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-                section.set(x, 15, z, floorState);
+                for (int y = 0; y < 15; y++) {
+                    section.set(x, y, z, 0); // Air
+                }
+                section.set(x, 15, z, stateId); // Deepslate / Configured block
             }
         }
-        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+
+        // 2. Ensure biome palette is fully populated (prevent client rendering crash)
+        for (int bx = 0; bx < 4; bx++) {
+            for (int by = 0; by < 4; by++) {
+                for (int bz = 0; bz < 4; bz++) {
+                    section.getBiomeData().set(bx, by, bz, biomeId);
+                }
+            }
+        }
+
         return section;
     }
 
@@ -164,18 +189,22 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             floorStateCache.clear();
             cachedFloorBlockName = configuredBlock;
         }
-        return floorStateCache.computeIfAbsent(clientVersion, cv -> resolveConfiguredOrDefault(cv, configuredBlock));
-    }
-
-    private WrappedBlockState resolveConfiguredOrDefault(ClientVersion clientVersion, String configuredBlock) {
-        try {
-            WrappedBlockState state = WrappedBlockState.getByString(clientVersion, configuredBlock);
-            if (state != null) {
-                return state;
+        return floorStateCache.computeIfAbsent(clientVersion, cv -> {
+            try {
+                WrappedBlockState state = WrappedBlockState.getByString(cv, configuredBlock);
+                if (state != null) {
+                    return state;
+                }
+            } catch (Exception ignored) {
             }
-        } catch (Exception ignored) {
-        }
-        logger.warning("fake-floor.block '" + configuredBlock + "' could not be resolved - falling back to minecraft:deepslate");
-        return WrappedBlockState.getDefaultState(clientVersion, StateTypes.DEEPSLATE);
+            try {
+                WrappedBlockState fallback = WrappedBlockState.getByString(cv, "minecraft:deepslate");
+                if (fallback != null) {
+                    return fallback;
+                }
+            } catch (Exception ignored) {
+            }
+            return WrappedBlockState.getDefaultState(cv, StateTypes.DEEPSLATE);
+        });
     }
 }
