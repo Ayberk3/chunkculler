@@ -36,6 +36,7 @@ public final class Main extends JavaPlugin {
     @Override
     public void onEnable() {
         PacketEvents.getAPI().init();
+        ChunkResender.init();
 
         // 1. Config Manager
         this.configManager = new ConfigManager(this);
