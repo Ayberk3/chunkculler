@@ -42,10 +42,11 @@ jobs:
             ## 🚀 SubChunkCuller v1.1.0 (Fake Deepslate Floor Release)
 
             ### 💎 Yeni Özellikler & Çözümler:
+            - **SubChunkCuller-1.1.0.jar:** Jar ismi güncel sürüm numarasıyla tam eşitlendi.
             - **100% Kararlı ve Çökmesiz Fake Deepslate Floor:** Sınır kesim yüksekliğinin en alt katmanına kesintisiz, pürüzsüz sahte deepslate zemini yerleştirilir. Hileciler/Freecam aşağı baktığında sonsuz boşluk yerine doğal bir deepslate katmanı görür.
             - **Saf Dikey Gizleme (Sıfır Yatay Kesinti):** Oyuncunun bulunduğu Y seviyesi (örneğin Y = -5) ve yukarısı, oyuncunun görüş mesafesindeki (6-12 chunk) tüm yönlerde %100 eksiksiz ve açık kalır.
             - **ChunkResender NMS Motoru:** Yatay ve dikey hareketlerde chunklar anında istemciye basılır.
             - **Derinlemesine Binek & Yolcu Gizleme:** Vagon, bot ve binekler tüm yolcularıyla birlikte Paper resmi API'si ile gizlenir.
             - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme.
-          files: target/SubChunkCuller-1.0.0.jar
+          files: target/SubChunkCuller-*.jar
           token: ${{ secrets.GITHUB_TOKEN }}
