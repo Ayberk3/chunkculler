@@ -36,16 +36,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.9
-          name: "SubChunkCuller v1.0.9 (Pure Vertical Culling & 100% Horizontal View Distance)"
+          tag_name: v1.1.0
+          name: "SubChunkCuller v1.1.0 (Full Fake Deepslate Floor & Seamless Movement)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.9 (Pure Vertical Culling & Full Horizontal View)
+            ## 🚀 SubChunkCuller v1.1.0 (Fake Deepslate Floor Release)
 
-            ### 🎯 Özellikler & Çözümler:
-            - **Saf Dikey Gizleme (Sıfır Yatay Kesinti):** Oyuncunun bulunduğu Y seviyesi (örneğin Y = -5) ve yukarısı, oyuncunun görüş mesafesindeki (6-12 chunk) tüm yönlerde %100 eksiksiz ve açık kalır. Yatayda hiçbir blok veya chunk asla gizlenmez!
-            - **Dinamik Görüş Mesafesi Yenileme:** Oyuncu seviye değiştirdiğinde görüş alanındaki (Client View Distance) tüm chunklar `ChunkResender` ile anında güncellenir.
-            - **Yalnızca Derin Zemin Gizlenir:** Sadece oyuncunun altındaki derin katmanlar (örneğin `playerY - 32` altı) boşluğa dönüştürülür.
-            - **Tam Varlık ve Vagon Gizleme:** Paper yerel `hideEntity` sistemiyle yerin altındaki hunili vagonlar ve yaratıklar tam gizlenir.
-            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme ile sunucu 20.0 TPS sabit çalışır.
+            ### 💎 Yeni Özellikler & Çözümler:
+            - **100% Kararlı ve Çökmesiz Fake Deepslate Floor:** Sınır kesim yüksekliğinin en alt katmanına kesintisiz, pürüzsüz sahte deepslate zemini yerleştirilir. Hileciler/Freecam aşağı baktığında sonsuz boşluk yerine doğal bir deepslate katmanı görür.
+            - **Saf Dikey Gizleme (Sıfır Yatay Kesinti):** Oyuncunun bulunduğu Y seviyesi (örneğin Y = -5) ve yukarısı, oyuncunun görüş mesafesindeki (6-12 chunk) tüm yönlerde %100 eksiksiz ve açık kalır.
+            - **ChunkResender NMS Motoru:** Yatay ve dikey hareketlerde chunklar anında istemciye basılır.
+            - **Derinlemesine Binek & Yolcu Gizleme:** Vagon, bot ve binekler tüm yolcularıyla birlikte Paper resmi API'si ile gizlenir.
+            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme.
           files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
