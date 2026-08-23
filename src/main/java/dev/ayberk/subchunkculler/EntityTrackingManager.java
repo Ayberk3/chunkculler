@@ -127,6 +127,7 @@ public final class EntityTrackingManager {
             return false;
         }
 
+        // Never hide in-flight projectiles
         if (entity instanceof Projectile || entity instanceof FallingBlock || entity instanceof Item) {
             return false;
         }
