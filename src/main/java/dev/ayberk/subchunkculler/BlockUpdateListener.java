@@ -31,7 +31,6 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
                 && type != PacketType.Play.Server.BLOCK_ACTION
                 && type != PacketType.Play.Server.BLOCK_BREAK_ANIMATION
                 && type != PacketType.Play.Server.EFFECT
-                && type != PacketType.Play.Server.WORLD_EVENT
                 && type != PacketType.Play.Server.PARTICLE) {
             return;
         }
@@ -67,8 +66,8 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
                 cancelIfBelow(event, new WrapperPlayServerBlockAction(event).getBlockPosition(), cutoffBlockY);
             } else if (type == PacketType.Play.Server.BLOCK_BREAK_ANIMATION) {
                 cancelIfBelow(event, new WrapperPlayServerBlockBreakAnimation(event).getBlockPosition(), cutoffBlockY);
-            } else if (type == PacketType.Play.Server.WORLD_EVENT || type == PacketType.Play.Server.EFFECT) {
-                cancelIfBelow(event, new WrapperPlayServerWorldEvent(event).getPosition(), cutoffBlockY);
+            } else if (type == PacketType.Play.Server.EFFECT) {
+                cancelIfBelow(event, new WrapperPlayServerEffect(event).getPosition(), cutoffBlockY);
             } else if (type == PacketType.Play.Server.PARTICLE) {
                 Vector3d pos = new WrapperPlayServerParticle(event).getPosition();
                 if (pos != null && pos.getY() < cutoffBlockY) {
@@ -76,7 +75,6 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
                 }
             }
         } catch (Throwable ignored) {
-            // Failsafe
         }
     }
 
