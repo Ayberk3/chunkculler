@@ -22,8 +22,7 @@ public final class EntityTrackerTask extends BukkitRunnable {
             return;
         }
 
-        double hideDistanceY = plugin.getConfigManager().getHideDistanceY();
-        double showDistanceY = plugin.getConfigManager().getShowDistanceY();
+        ConfigManager config = plugin.getConfigManager();
         EntityTrackingManager trackingManager = plugin.getEntityTrackingManager();
 
         for (Player viewer : Bukkit.getOnlinePlayers()) {
@@ -31,11 +30,21 @@ public final class EntityTrackerTask extends BukkitRunnable {
                 continue;
             }
 
+            if (!config.isWorldEnabled(viewer.getWorld().getName())) {
+                continue;
+            }
+
             Location viewerLoc = viewer.getLocation();
-            double viewerY = viewerLoc.getY();
+            Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewer.getUniqueId());
+            if (viewerSectionY == null) {
+                viewerSectionY = viewerLoc.getBlockY() >> 4;
+            }
+
+            int cutoffSection = config.computeCutoffSection(viewerSectionY);
+            int cutoffBlockY = cutoffSection << 4;
 
             Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
-                    viewerLoc, 64.0, 128.0, 64.0, trackingManager::isTargetApplicable
+                    viewerLoc, 96.0, 128.0, 96.0, trackingManager::isTargetApplicable
             );
 
             for (Entity target : nearbyEntities) {
@@ -44,11 +53,11 @@ public final class EntityTrackerTask extends BukkitRunnable {
                 }
 
                 double targetY = target.getLocation().getY();
-                double deltaY = viewerY - targetY;
 
-                if (deltaY >= hideDistanceY) {
+                // If entity is below the culled subchunk cutoff -> HIDE immediately!
+                if (targetY < cutoffBlockY) {
                     trackingManager.hideEntity(viewer, target);
-                } else if (deltaY <= showDistanceY) {
+                } else {
                     trackingManager.showEntity(viewer, target);
                 }
             }
