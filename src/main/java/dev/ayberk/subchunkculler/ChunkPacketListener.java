@@ -34,7 +34,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         }
 
         Object rawPlayer = event.getPlayer();
-        if (!(rawPlayer instanceof Player player)) {
+        if (!(rawPlayer instanceof Player player) || !player.isOnline()) {
             return;
         }
 
@@ -53,7 +53,14 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
 
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
         Column column = wrapper.getColumn();
+        if (column == null) {
+            return;
+        }
+
         BaseChunk[] chunks = column.getChunks();
+        if (chunks == null || chunks.length == 0) {
+            return;
+        }
 
         final int minSection = config.getMinSection(worldName);
         final ClientVersion clientVersion = event.getUser().getClientVersion();
@@ -84,7 +91,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
 
     private int stripHiddenTileEntities(WrapperPlayServerChunkData wrapper, Column column, int cutoffBlockY) {
         TileEntity[] source = column.getTileEntities();
-        if (source.length == 0) {
+        if (source == null || source.length == 0) {
             return 0;
         }
 
@@ -93,6 +100,9 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         int removed = 0;
         for (int index = 0; index < source.length; index++) {
             TileEntity tileEntity = source[index];
+            if (tileEntity == null) {
+                continue;
+            }
             if (tileEntity.getY() < cutoffBlockY) {
                 removed++;
                 if (kept == null) {
