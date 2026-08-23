@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Collection;
@@ -28,7 +29,7 @@ public final class EntityTrackerTask extends BukkitRunnable {
     }
 
     public void updatePlayer(Player viewer) {
-        if (viewer == null || !viewer.isOnline() || viewer.hasPermission("subchunkculler.bypass")) {
+        if (viewer == null || !viewer.isOnline()) {
             return;
         }
 
@@ -37,7 +38,6 @@ public final class EntityTrackerTask extends BukkitRunnable {
             return;
         }
 
-        EntityTrackingManager trackingManager = plugin.getEntityTrackingManager();
         Location viewerLoc = viewer.getLocation();
         Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewer.getUniqueId());
         if (viewerSectionY == null) {
@@ -48,7 +48,7 @@ public final class EntityTrackerTask extends BukkitRunnable {
         int cutoffBlockY = cutoffSection << 4;
 
         Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
-                viewerLoc, 96.0, 128.0, 96.0, trackingManager::isTargetApplicable
+                viewerLoc, 128.0, 128.0, 128.0
         );
 
         for (Entity target : nearbyEntities) {
@@ -56,13 +56,22 @@ public final class EntityTrackerTask extends BukkitRunnable {
                 continue;
             }
 
+            // Keep projectiles visible
+            if (target instanceof Projectile) {
+                continue;
+            }
+
             double targetY = target.getLocation().getY();
 
-            // If entity is below the culled subchunk cutoff -> HIDE immediately!
+            // If entity is below the culled subchunk cutoff -> HIDE natively!
             if (targetY < cutoffBlockY) {
-                trackingManager.hideEntity(viewer, target);
+                if (viewer.canSee(target)) {
+                    viewer.hideEntity(plugin, target);
+                }
             } else {
-                trackingManager.showEntity(viewer, target);
+                if (!viewer.canSee(target)) {
+                    viewer.showEntity(plugin, target);
+                }
             }
         }
     }
