@@ -17,7 +17,7 @@ refresh-debounce-ticks: 6
 refresh-chunks-per-tick: 6
 
 fake-floor:
-  enabled: true
+  enabled: false
   block: "minecraft:deepslate"
 
 block-update-filter:
@@ -26,17 +26,8 @@ block-update-filter:
 # 2. Zero-Leak Vertical Entity Anti-ESP Settings
 entity-culler:
   enabled: true
-  # Scan interval in ticks (4 ticks = 0.2s)
-  check-interval-ticks: 4
-
-  targets:
-    hide-players: true
-    hide-monsters: true
-    hide-animals: false
-    hide-misc: true
-    # Keep town NPCs (FancyNpcs/Citizens) and holograms visible even if underground
-    bypass-npcs: true
-    bypass-holograms: true
+  # Scan interval in ticks (2 ticks = 0.1s for ultra-fast response)
+  check-interval-ticks: 2
 
   # Dampen deep underground sound packets (Sound ESP prevention)
   dampen-underground-sounds: true
