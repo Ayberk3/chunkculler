@@ -22,9 +22,9 @@ refresh-cooldown-ms: 250
 refresh-debounce-ticks: 4
 refresh-chunks-per-tick: 12
 
-# Fake floor (disabled by default for clean natural void)
+# Fake floor (generates a natural deepslate bedrock floor at cutoff boundary)
 fake-floor:
-  enabled: false
+  enabled: true
   block: "minecraft:deepslate"
 
 # Filter block updates below cutoff
