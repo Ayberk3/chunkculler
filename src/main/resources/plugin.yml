@@ -13,7 +13,7 @@ permissions:
     default: op
   subchunkculler.bypass:
     description: Allows player to bypass entity and subchunk culling.
-    default: op
+    default: false
 
 commands:
   subchunkculler:
