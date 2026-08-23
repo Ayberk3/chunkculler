@@ -36,18 +36,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.4
-          name: "SubChunkCuller v1.0.4 (100% Airtight, Zero-Leak & Rock Solid)"
+          tag_name: v1.0.5
+          name: "SubChunkCuller v1.0.5 (Native Paper Entity Culling & OP Bypass Fix)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.4 (Airtight Master Release)
+            ## 🚀 SubChunkCuller v1.0.5
 
-            ### 🛡️ Kapsamlı Güvenlik, Performans ve Kararlılık İyileştirmeleri:
-            - **Async Netty Thread Safety:** Paket filtreleme sırasında asenkron dünya/varlık erişimi kaldırıldı (`hideEntityId`), thread çakışmaları %100 önlendi.
-            - **Cross-World Distance Fix:** Dünyalar arası ışınlanmalarda (Overworld -> Nether/End) oluşabilecek Bukkit mesafe hatası düzeltildi.
-            - **Tam Paket Kapsamı (100% Anti-ESP):** `ENTITY_SOUND_EFFECT`, `HURT_ANIMATION`, `DAMAGE_EVENT`, `ENTITY_EFFECT`, `REMOVE_ENTITY_EFFECT` paketleri de filtreye eklendi; hileciler gizli yaratıkları can/hasar/iksir/ses paketleriyle bile tespit edemez.
-            - **Crash & Disconnect Fix:** Netty chunk serileştirmesindeki biyom/palet yapısı standart protokolle optimize edildi.
-            - **Patlama & TNT Koruması:** Yeraltı patlama paketleri filtrelenir.
-            - **Fake Floor (Deepslate) Güvenli Render:** Kararlı tekil biyom paletiyle çökmesiz sahte zemin.
-            - **TAB & Skin Koruması:** `TAB` listesi ve skinler bozulmaz.
+            ### 🎯 En Kritik Düzeltmeler:
+            - **OP Bypass Yetki Hatası Çözüldü:** Sunucuda OP olan adminlerin `subchunkculler.bypass` yetkisi yüzünden entity taramasından otomatik atlanması engellendi. Artık OP olsan da olmasan da yer altındaki TÜM varlıklar gizlenir.
+            - **Paper Native `player.hideEntity` Entegrasyonu:** Paper'ın yerel entity gizleme motoruna geçildi. Yerdeki vagonlar, sandıklı/hunili vagonlar, zombiler, iskeletler ve creeperlar sıfır gecikmeyle istemciden tamamen yok edilir.
+            - **128 Blok Geniş Tarama Alanı:** Görüş alanındaki tüm varlıklar 2 ticklik (0.1s) ultra hızlı aralıkla taranır.
           files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
