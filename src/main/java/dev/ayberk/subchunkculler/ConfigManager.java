@@ -17,6 +17,7 @@ public final class ConfigManager implements Listener {
 
     private final Main plugin;
 
+    // SubChunk Settings
     private volatile int subChunksBelow;
     private volatile boolean debugMode;
     private volatile int refreshRadius;
@@ -29,6 +30,17 @@ public final class ConfigManager implements Listener {
     private volatile String fakeFloorBlock;
     private volatile boolean blockUpdateFilterEnabled;
 
+    // Entity Culler Settings
+    private volatile boolean entityCullerEnabled;
+    private volatile double hideDistanceY;
+    private volatile double showDistanceY;
+    private volatile int checkIntervalTicks;
+    private volatile boolean hidePlayers;
+    private volatile boolean hideMonsters;
+    private volatile boolean hideAnimals;
+    private volatile boolean hideMisc;
+    private volatile boolean dampenUndergroundSounds;
+
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
 
     public ConfigManager(Main plugin) {
@@ -40,6 +52,7 @@ public final class ConfigManager implements Listener {
         plugin.reloadConfig();
         FileConfiguration cfg = plugin.getConfig();
 
+        // 1. SubChunk
         this.subChunksBelow = Math.max(0, cfg.getInt("sub-chunks-below", 2));
         this.debugMode = cfg.getBoolean("debug-mode", false);
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 3));
@@ -58,6 +71,21 @@ public final class ConfigManager implements Listener {
             worlds.add("world");
         }
         this.enabledWorlds = worlds;
+
+        // 2. Entity Culler
+        this.entityCullerEnabled = cfg.getBoolean("entity-culler.enabled", true);
+        this.hideDistanceY = cfg.getDouble("entity-culler.hide-distance-y", 48.0);
+        this.showDistanceY = cfg.getDouble("entity-culler.show-distance-y", 42.0);
+        this.checkIntervalTicks = Math.max(1, cfg.getInt("entity-culler.check-interval-ticks", 4));
+        this.hidePlayers = cfg.getBoolean("entity-culler.targets.hide-players", true);
+        this.hideMonsters = cfg.getBoolean("entity-culler.targets.hide-monsters", true);
+        this.hideAnimals = cfg.getBoolean("entity-culler.targets.hide-animals", false);
+        this.hideMisc = cfg.getBoolean("entity-culler.targets.hide-misc", true);
+        this.dampenUndergroundSounds = cfg.getBoolean("entity-culler.dampen-underground-sounds", true);
+
+        if (this.showDistanceY >= this.hideDistanceY) {
+            this.showDistanceY = this.hideDistanceY - 4.0;
+        }
 
         worldMinSection.clear();
         for (World world : plugin.getServer().getWorlds()) {
@@ -134,5 +162,41 @@ public final class ConfigManager implements Listener {
 
     public boolean isBlockUpdateFilterEnabled() {
         return blockUpdateFilterEnabled;
+    }
+
+    public boolean isEntityCullerEnabled() {
+        return entityCullerEnabled;
+    }
+
+    public double getHideDistanceY() {
+        return hideDistanceY;
+    }
+
+    public double getShowDistanceY() {
+        return showDistanceY;
+    }
+
+    public int getCheckIntervalTicks() {
+        return checkIntervalTicks;
+    }
+
+    public boolean isHidePlayers() {
+        return hidePlayers;
+    }
+
+    public boolean isHideMonsters() {
+        return hideMonsters;
+    }
+
+    public boolean isHideAnimals() {
+        return hideAnimals;
+    }
+
+    public boolean isHideMisc() {
+        return hideMisc;
+    }
+
+    public boolean isDampenUndergroundSounds() {
+        return dampenUndergroundSounds;
     }
 }
