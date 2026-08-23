@@ -35,14 +35,24 @@ public final class EntityPacketListener extends PacketListenerAbstract {
         UUID viewerUUID = player.getUniqueId();
         var packetType = event.getPacketType();
         EntityTrackingManager tracking = plugin.getEntityTrackingManager();
+        ConfigManager config = plugin.getConfigManager();
+
+        if (!config.isWorldEnabled(player.getWorld().getName())) {
+            return;
+        }
+
+        Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewerUUID);
+        if (viewerSectionY == null) {
+            viewerSectionY = player.getLocation().getBlockY() >> 4;
+        }
+        int cutoffBlockY = config.computeCutoffSection(viewerSectionY) << 4;
 
         if (packetType == PacketType.Play.Server.SPAWN_ENTITY) {
             WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
             int entityId = packet.getEntityId();
             double entityY = packet.getPosition().getY();
-            double viewerY = player.getLocation().getY();
 
-            if ((viewerY - entityY) >= plugin.getConfigManager().getHideDistanceY()) {
+            if (entityY < cutoffBlockY) {
                 tracking.hideEntity(player, player.getWorld().getEntities().stream()
                         .filter(e -> e.getEntityId() == entityId)
                         .findFirst().orElse(null));
@@ -130,7 +140,7 @@ public final class EntityPacketListener extends PacketListenerAbstract {
                         } else if (posObj instanceof com.github.retrooper.packetevents.util.Vector3d v3d) {
                             soundY = v3d.getY();
                         }
-                        if ((player.getLocation().getY() - soundY) >= plugin.getConfigManager().getHideDistanceY()) {
+                        if (soundY < cutoffBlockY) {
                             event.setCancelled(true);
                         }
                     }
