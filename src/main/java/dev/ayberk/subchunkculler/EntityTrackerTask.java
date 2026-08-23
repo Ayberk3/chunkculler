@@ -47,8 +47,9 @@ public final class EntityTrackerTask extends BukkitRunnable {
         int cutoffSection = config.computeCutoffSection(viewerSectionY);
         int cutoffBlockY = cutoffSection << 4;
 
+        // Optimized radius: 64 blocks horizontally and 96 blocks vertically (matching Paper tracking range)
         Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
-                viewerLoc, 128.0, 128.0, 128.0
+                viewerLoc, 64.0, 96.0, 64.0
         );
 
         for (Entity target : nearbyEntities) {
@@ -56,7 +57,7 @@ public final class EntityTrackerTask extends BukkitRunnable {
                 continue;
             }
 
-            // Keep projectiles visible
+            // Projectiles are never hidden
             if (target instanceof Projectile) {
                 continue;
             }
