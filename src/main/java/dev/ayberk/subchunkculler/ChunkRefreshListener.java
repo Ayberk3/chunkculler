@@ -6,12 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayDeque;
@@ -25,7 +20,6 @@ public final class ChunkRefreshListener implements Listener {
     private final ConfigManager config;
 
     private final Map<UUID, Long> lastRefreshAt = new ConcurrentHashMap<>();
-
     private final Map<UUID, BukkitTask> pendingDebounce = new ConcurrentHashMap<>();
     private final Map<UUID, Long> pendingSince = new ConcurrentHashMap<>();
     private static final long MAX_DEBOUNCE_MS = 1500L;
@@ -70,6 +64,7 @@ public final class ChunkRefreshListener implements Listener {
             long worldKey = entry[0];
             int cx = (int) entry[1];
             int cz = (int) entry[2];
+
             World world = chunkWorlds.get(worldKey);
             if (world != null && world.isChunkLoaded(cx, cz)) {
                 //noinspection deprecation
@@ -90,6 +85,7 @@ public final class ChunkRefreshListener implements Listener {
         Main.VIEWER_SECTION_Y.remove(id);
         lastRefreshAt.remove(id);
         pendingSince.remove(id);
+
         BukkitTask task = pendingDebounce.remove(id);
         if (task != null) {
             task.cancel();
