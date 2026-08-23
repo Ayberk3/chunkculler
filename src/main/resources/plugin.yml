@@ -1,23 +1,23 @@
-name: VerticalAntiESP
+name: SubChunkCuller
 version: '1.0.0'
-main: com.sektor.verticalantiesp.VerticalAntiESP
+main: dev.ayberk.subchunkculler.Main
 api-version: '1.20'
 author: Ayberk & DeepMind
-description: Ultra-high-performance zero-leak vertical entity culler & anti-ESP.
+description: High-performance subchunk occlusion culling and zero-leak vertical anti-ESP.
 depend:
   - packetevents
 
 permissions:
-  verticalantiesp.bypass:
-    description: Allows player to bypass entity hiding (see all entities).
-    default: op
-  verticalantiesp.admin:
+  subchunkculler.admin:
     description: Allows player to reload the plugin.
+    default: op
+  subchunkculler.bypass:
+    description: Allows player to bypass entity and subchunk culling.
     default: op
 
 commands:
-  verticalantiesp:
-    description: Main command for VerticalAntiESP
-    aliases: [vaesp]
-    permission: verticalantiesp.admin
+  subchunkculler:
+    description: SubChunkCuller main command
+    aliases: [scc, chunkculler]
+    permission: subchunkculler.admin
     usage: /<command> [reload]
