@@ -1,37 +1,46 @@
 # ==========================================================
-#              VerticalAntiESP Configuration
-# Ultra-High-Performance Zero-Leak Vertical Entity Culler
+#                   SubChunkCuller Config
+#   SubChunk Occlusion Culler & Zero-Leak Vertical Anti-ESP
 # ==========================================================
 
-# Vertical Distance Settings (in blocks)
-# If an entity is >= hide-distance-y blocks BELOW the viewer, it is culled.
-hide-distance-y: 48.0
+# 1. SubChunk (Block & Section) Culling Settings
+sub-chunks-below: 2
+absolute-cutoff-y: 0
+enabled-worlds:
+  - world
+  - world_nether
+  - world_the_end
 
-# Hysteresis Buffer:
-# The entity will only be revealed again once the viewer comes within <= show-distance-y.
-# (This prevents packet thrashing / flicker when jumping or standing on threshold).
-show-distance-y: 42.0
+refresh-radius: 3
+refresh-cooldown-ms: 250
+refresh-debounce-ticks: 6
+refresh-chunks-per-tick: 6
 
-# Scan interval in server ticks (20 ticks = 1 second, 4 ticks = 0.2s)
-check-interval-ticks: 4
+fake-floor:
+  enabled: true
+  block: "minecraft:deepslate"
 
-# Entity Types to Hide
-targets:
-  # Hide players who are 48 blocks below (Protects against Player ESP / Tracers)
-  hide-players: true
+block-update-filter:
+  enabled: true
 
-  # Hide monsters (Zombies, Skeletons, Creepers, etc.)
-  hide-monsters: true
+# 2. Zero-Leak Vertical Entity Anti-ESP Settings
+entity-culler:
+  enabled: true
+  # Hide entities >= 48 blocks below the viewer
+  hide-distance-y: 48.0
+  # Reveal entities only when viewer gets within <= 42 blocks (Hysteresis buffer)
+  show-distance-y: 42.0
+  # Scan interval in ticks (4 ticks = 0.2s)
+  check-interval-ticks: 4
 
-  # Hide passive animals (Cows, Sheep, Horses, etc.)
-  hide-animals: false
+  targets:
+    hide-players: true
+    hide-monsters: true
+    hide-animals: false
+    hide-misc: true
 
-  # Hide other entities (Minecarts with chest, armor stands, etc.)
-  hide-misc: true
+  # Dampen deep underground sound packets (Sound ESP prevention)
+  dampen-underground-sounds: true
 
-# Sound Leaks Protection
-# Prevents hack clients from locating underground players via localized sound packets
-dampen-underground-sounds: true
-
-# Debug mode for server console logging
-debug: false
+# Console debugging
+debug-mode: false
