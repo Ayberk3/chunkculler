@@ -159,7 +159,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         int stateId = floorState.getGlobalId();
         int biomeId = Biomes.PLAINS.getId(clientVersion);
 
-        BaseChunk section = existing != null ? existing : new Chunk_v1_18();
+        Chunk_v1_18 section = (existing instanceof Chunk_v1_18 c) ? c : new Chunk_v1_18();
 
         // 1. Clear all blocks below y=15 and place floor block at y=15
         for (int x = 0; x < 16; x++) {
