@@ -1,13 +1,17 @@
-
-name: Build Plugin Jar
+name: Build & Release Plugin
 
 on:
   push:
+    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,8 +26,27 @@ jobs:
       - name: Build with Maven
         run: mvn -B clean package
 
-      - name: Upload jar artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: SubChunkCuller-jar
           path: target/*.jar
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: "SubChunkCuller v1.0.0 (Zero-Leak Anti-ESP Release)"
+          body: |
+            ## 🚀 SubChunkCuller v1.0.0
+
+            ### Yenilikler & Çözümler:
+            - **SubChunk Culling:** Oyuncunun altındaki mağara/blok bölümlerini siler.
+            - **Zero-Leak Vertical Anti-ESP:** 48 blok altındaki tüm oyuncu ve yaratıkları hilelerden tamamen gizler.
+            - **Sıfır Sızıntı (Zero-Leak):** Gizli oyuncuların `TELEPORT`, `REL_MOVE`, `METADATA`, `EQUIPMENT` ve ses paketlerini tamamen durdurur (Ghost entity / Tracer oluşamaz).
+            - **TAB Koruması:** `TAB` listesi ve skinler bozulmaz.
+            - **Ok / Fırlatılabilir Koruması:** Fırlatılan oklar ve inciler havada silinmez.
+            - **Binek Senkronizasyonu:** At ve Bot gibi araçlara binen oyuncular yaklaşıldığında tam senkronize spawn edilir.
+          files: target/*.jar
+          token: ${{ secrets.GITHUB_TOKEN }}
