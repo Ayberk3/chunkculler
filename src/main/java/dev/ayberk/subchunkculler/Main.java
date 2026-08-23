@@ -5,6 +5,7 @@ import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Map;
 import java.util.UUID;
@@ -16,6 +17,11 @@ public final class Main extends JavaPlugin {
 
     private ConfigManager configManager;
     private ChunkRefreshListener chunkRefreshListener;
+    private EntityTrackingManager entityTrackingManager;
+    private EntityPacketListener entityPacketListener;
+    private ChunkPacketListener chunkPacketListener;
+    private BlockUpdateListener blockUpdateListener;
+    private BukkitTask entityTrackerTask;
 
     @Override
     public void onLoad() {
@@ -30,36 +36,54 @@ public final class Main extends JavaPlugin {
     public void onEnable() {
         PacketEvents.getAPI().init();
 
+        // 1. Config Manager
         this.configManager = new ConfigManager(this);
         configManager.load();
         getServer().getPluginManager().registerEvents(configManager, this);
 
-        PacketEvents.getAPI().getEventManager()
-                .registerListener(new ChunkPacketListener(configManager));
+        // 2. SubChunk Packet Listeners
+        this.chunkPacketListener = new ChunkPacketListener(configManager);
+        this.blockUpdateListener = new BlockUpdateListener(configManager);
+        PacketEvents.getAPI().getEventManager().registerListener(chunkPacketListener);
+        PacketEvents.getAPI().getEventManager().registerListener(blockUpdateListener);
 
-        PacketEvents.getAPI().getEventManager()
-                .registerListener(new BlockUpdateListener(configManager));
+        // 3. Chunk Refresh Listener
+        this.chunkRefreshListener = new ChunkRefreshListener(this, configManager);
+        getServer().getPluginManager().registerEvents(chunkRefreshListener, this);
+        chunkRefreshListener.startDrainTask();
 
-        ChunkRefreshListener refreshListener = new ChunkRefreshListener(this, configManager);
-        getServer().getPluginManager().registerEvents(refreshListener, this);
-        refreshListener.startDrainTask();
-        this.chunkRefreshListener = refreshListener;
+        // 4. Entity Tracking & Zero-Leak Anti-ESP
+        this.entityTrackingManager = new EntityTrackingManager(this);
+        this.entityPacketListener = new EntityPacketListener(this);
+        PacketEvents.getAPI().getEventManager().registerListener(entityPacketListener);
+        getServer().getPluginManager().registerEvents(new EventListener(this), this);
+        startEntityTrackerTask();
 
+        // 5. Commands
         ReloadCommand reloadCommand = new ReloadCommand(this, configManager);
         PluginCommand command = getCommand("subchunkculler");
         if (command != null) {
             command.setExecutor(reloadCommand);
             command.setTabCompleter(reloadCommand);
-        } else {
-            getLogger().severe("subchunkculler command missing from plugin.yml - /subchunkculler reload will not work.");
         }
 
         for (Player player : getServer().getOnlinePlayers()) {
             VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         }
 
-        getLogger().info("SubChunkCuller enabled - hiding sections more than "
-                + configManager.getSubChunksBelow() + " sub-chunk(s) below players.");
+        getLogger().info("SubChunkCuller v" + getDescription().getVersion() + " successfully enabled!");
+        getLogger().info("SubChunks Below: " + configManager.getSubChunksBelow() +
+                ", Entity Hide Distance: " + configManager.getHideDistanceY() + " blocks.");
+    }
+
+    public void startEntityTrackerTask() {
+        if (entityTrackerTask != null && !entityTrackerTask.isCancelled()) {
+            entityTrackerTask.cancel();
+        }
+        if (configManager.isEntityCullerEnabled()) {
+            int interval = configManager.getCheckIntervalTicks();
+            this.entityTrackerTask = new EntityTrackerTask(this).runTaskTimer(this, 20L, interval);
+        }
     }
 
     @Override
@@ -67,11 +91,32 @@ public final class Main extends JavaPlugin {
         if (chunkRefreshListener != null) {
             chunkRefreshListener.stop();
         }
+        if (entityTrackerTask != null && !entityTrackerTask.isCancelled()) {
+            entityTrackerTask.cancel();
+        }
+        if (chunkPacketListener != null) {
+            PacketEvents.getAPI().getEventManager().unregisterListener(chunkPacketListener);
+        }
+        if (blockUpdateListener != null) {
+            PacketEvents.getAPI().getEventManager().unregisterListener(blockUpdateListener);
+        }
+        if (entityPacketListener != null) {
+            PacketEvents.getAPI().getEventManager().unregisterListener(entityPacketListener);
+        }
+        if (entityTrackingManager != null) {
+            entityTrackingManager.clearAll();
+        }
+
         PacketEvents.getAPI().terminate();
         VIEWER_SECTION_Y.clear();
+        getLogger().info("SubChunkCuller disabled.");
     }
 
     public ConfigManager getConfigManager() {
         return configManager;
+    }
+
+    public EntityTrackingManager getEntityTrackingManager() {
+        return entityTrackingManager;
     }
 }
