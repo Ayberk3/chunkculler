@@ -21,6 +21,7 @@ public final class Main extends JavaPlugin {
     private EntityPacketListener entityPacketListener;
     private ChunkPacketListener chunkPacketListener;
     private BlockUpdateListener blockUpdateListener;
+    private EntityTrackerTask trackerRunnable;
     private BukkitTask entityTrackerTask;
 
     @Override
@@ -73,7 +74,7 @@ public final class Main extends JavaPlugin {
 
         getLogger().info("SubChunkCuller v" + getDescription().getVersion() + " successfully enabled!");
         getLogger().info("SubChunks Below: " + configManager.getSubChunksBelow() +
-                ", Entity Hide Distance: " + configManager.getHideDistanceY() + " blocks.");
+                ", Dynamic Void Entity Culling active.");
     }
 
     public void startEntityTrackerTask() {
@@ -81,8 +82,15 @@ public final class Main extends JavaPlugin {
             entityTrackerTask.cancel();
         }
         if (configManager.isEntityCullerEnabled()) {
+            this.trackerRunnable = new EntityTrackerTask(this);
             int interval = configManager.getCheckIntervalTicks();
-            this.entityTrackerTask = new EntityTrackerTask(this).runTaskTimer(this, 20L, interval);
+            this.entityTrackerTask = trackerRunnable.runTaskTimer(this, 20L, interval);
+        }
+    }
+
+    public void updatePlayerEntities(Player player) {
+        if (trackerRunnable != null && player != null && player.isOnline()) {
+            trackerRunnable.updatePlayer(player);
         }
     }
 
