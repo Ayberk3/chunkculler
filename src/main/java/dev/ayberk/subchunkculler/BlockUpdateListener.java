@@ -30,7 +30,8 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
                 && type != PacketType.Play.Server.BLOCK_ENTITY_DATA
                 && type != PacketType.Play.Server.BLOCK_ACTION
                 && type != PacketType.Play.Server.BLOCK_BREAK_ANIMATION
-                && type != PacketType.Play.Server.PARTICLE) {
+                && type != PacketType.Play.Server.PARTICLE
+                && type != PacketType.Play.Server.EXPLOSION) {
             return;
         }
 
@@ -67,6 +68,11 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
                 cancelIfBelow(event, new WrapperPlayServerBlockBreakAnimation(event).getBlockPosition(), cutoffBlockY);
             } else if (type == PacketType.Play.Server.PARTICLE) {
                 Vector3d pos = new WrapperPlayServerParticle(event).getPosition();
+                if (pos != null && pos.getY() < cutoffBlockY) {
+                    event.setCancelled(true);
+                }
+            } else if (type == PacketType.Play.Server.EXPLOSION) {
+                Vector3d pos = new WrapperPlayServerExplosion(event).getPosition();
                 if (pos != null && pos.getY() < cutoffBlockY) {
                     event.setCancelled(true);
                 }
