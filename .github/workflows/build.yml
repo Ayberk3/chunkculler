@@ -36,14 +36,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.5
-          name: "SubChunkCuller v1.0.5 (Native Paper Entity Culling & OP Bypass Fix)"
+          tag_name: v1.0.6
+          name: "SubChunkCuller v1.0.6 (Zero-Lag & Native Entity Culling)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.5
+            ## 🚀 SubChunkCuller v1.0.6 (Zero-Lag Master Release)
 
-            ### 🎯 En Kritik Düzeltmeler:
-            - **OP Bypass Yetki Hatası Çözüldü:** Sunucuda OP olan adminlerin `subchunkculler.bypass` yetkisi yüzünden entity taramasından otomatik atlanması engellendi. Artık OP olsan da olmasan da yer altındaki TÜM varlıklar gizlenir.
-            - **Paper Native `player.hideEntity` Entegrasyonu:** Paper'ın yerel entity gizleme motoruna geçildi. Yerdeki vagonlar, sandıklı/hunili vagonlar, zombiler, iskeletler ve creeperlar sıfır gecikmeyle istemciden tamamen yok edilir.
-            - **128 Blok Geniş Tarama Alanı:** Görüş alanındaki tüm varlıklar 2 ticklik (0.1s) ultra hızlı aralıkla taranır.
+            ### 🎯 Özellikler & Çözümler:
+            - **OP Bypass Yetkisi Düzeltildi:** OP olan yöneticilerin filtreden atlanması engellendi. Artık adminler dahil herkes için yer altındaki varlıklar gizlenir.
+            - **Paper Native `player.hideEntity` Entegrasyonu:** Paper'ın resmi gizleme API'sine geçildi. Vagonlar, sandık/huni vagonları, yaratıklar ve eşyalar yer altına girdiği anda istemciden tamamen silinir.
+            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme ve optimize edilmiş 64 blokluk takip yarıçapı ile sunucuyu asla yormaz.
+            - **Tam Paket Koruması:** Hareket, can, hasar, iksir ve ses paketleri tamamen durdurulur.
+            - **TAB Listesi & Ok Koruması:** `TAB` listesi ve atılan oklar bozulmaz.
           files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
