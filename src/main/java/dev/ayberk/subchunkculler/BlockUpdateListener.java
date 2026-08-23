@@ -4,10 +4,11 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.*;
 import org.bukkit.entity.Player;
+
+import java.util.UUID;
 
 public final class BlockUpdateListener extends PacketListenerAbstract {
 
@@ -24,19 +25,19 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
             return;
         }
 
-        final var type = event.getPacketType();
-        if (type != PacketType.Play.Server.BLOCK_CHANGE
-                && type != PacketType.Play.Server.MULTI_BLOCK_CHANGE
-                && type != PacketType.Play.Server.BLOCK_ENTITY_DATA
-                && type != PacketType.Play.Server.BLOCK_ACTION
-                && type != PacketType.Play.Server.BLOCK_BREAK_ANIMATION
-                && type != PacketType.Play.Server.PARTICLE
-                && type != PacketType.Play.Server.EXPLOSION) {
+        var packetType = event.getPacketType();
+        if (packetType != PacketType.Play.Server.BLOCK_CHANGE
+                && packetType != PacketType.Play.Server.MULTI_BLOCK_CHANGE
+                && packetType != PacketType.Play.Server.BLOCK_ENTITY_DATA
+                && packetType != PacketType.Play.Server.BLOCK_ACTION
+                && packetType != PacketType.Play.Server.BLOCK_BREAK_ANIMATION
+                && packetType != PacketType.Play.Server.PARTICLE
+                && packetType != PacketType.Play.Server.EXPLOSION) {
             return;
         }
 
         Object rawPlayer = event.getPlayer();
-        if (!(rawPlayer instanceof Player player)) {
+        if (!(rawPlayer instanceof Player player) || !player.isOnline()) {
             return;
         }
 
@@ -44,46 +45,61 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
             return;
         }
 
-        Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(player.getUniqueId());
-        if (viewerSectionY == null) {
-            viewerSectionY = config.getAbsoluteCutoffSection();
+        UUID viewerUUID = player.getUniqueId();
+        Integer playerSectionY = Main.VIEWER_SECTION_Y.get(viewerUUID);
+        if (playerSectionY == null) {
+            playerSectionY = player.getLocation().getBlockY() >> 4;
+            Main.VIEWER_SECTION_Y.put(viewerUUID, playerSectionY);
         }
 
-        final int cutoffSection = config.computeCutoffSection(viewerSectionY);
-        final int cutoffBlockY = cutoffSection << 4;
+        int cutoffSection = config.computeCutoffSection(playerSectionY);
+        int cutoffBlockY = cutoffSection << 4;
 
         try {
-            if (type == PacketType.Play.Server.BLOCK_CHANGE) {
-                cancelIfBelow(event, new WrapperPlayServerBlockChange(event).getBlockPosition(), cutoffBlockY);
-            } else if (type == PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
-                Vector3i sectionPos = new WrapperPlayServerMultiBlockChange(event).getChunkPosition();
-                if (sectionPos != null && sectionPos.getY() < cutoffSection) {
-                    event.setCancelled(true);
-                }
-            } else if (type == PacketType.Play.Server.BLOCK_ENTITY_DATA) {
-                cancelIfBelow(event, new WrapperPlayServerBlockEntityData(event).getPosition(), cutoffBlockY);
-            } else if (type == PacketType.Play.Server.BLOCK_ACTION) {
-                cancelIfBelow(event, new WrapperPlayServerBlockAction(event).getBlockPosition(), cutoffBlockY);
-            } else if (type == PacketType.Play.Server.BLOCK_BREAK_ANIMATION) {
-                cancelIfBelow(event, new WrapperPlayServerBlockBreakAnimation(event).getBlockPosition(), cutoffBlockY);
-            } else if (type == PacketType.Play.Server.PARTICLE) {
-                Vector3d pos = new WrapperPlayServerParticle(event).getPosition();
+            if (packetType == PacketType.Play.Server.BLOCK_CHANGE) {
+                WrapperPlayServerBlockChange blockChange = new WrapperPlayServerBlockChange(event);
+                Vector3i pos = blockChange.getBlockPosition();
                 if (pos != null && pos.getY() < cutoffBlockY) {
                     event.setCancelled(true);
                 }
-            } else if (type == PacketType.Play.Server.EXPLOSION) {
-                Vector3d pos = new WrapperPlayServerExplosion(event).getPosition();
+            } else if (packetType == PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
+                WrapperPlayServerMultiBlockChange multi = new WrapperPlayServerMultiBlockChange(event);
+                Vector3i chunkPos = multi.getChunkPosition();
+                if (chunkPos != null && chunkPos.getY() < cutoffSection) {
+                    event.setCancelled(true);
+                }
+            } else if (packetType == PacketType.Play.Server.BLOCK_ENTITY_DATA) {
+                WrapperPlayServerBlockEntityData bed = new WrapperPlayServerBlockEntityData(event);
+                Vector3i pos = bed.getBlockPosition();
+                if (pos != null && pos.getY() < cutoffBlockY) {
+                    event.setCancelled(true);
+                }
+            } else if (packetType == PacketType.Play.Server.BLOCK_ACTION) {
+                WrapperPlayServerBlockAction ba = new WrapperPlayServerBlockAction(event);
+                Vector3i pos = ba.getBlockPosition();
+                if (pos != null && pos.getY() < cutoffBlockY) {
+                    event.setCancelled(true);
+                }
+            } else if (packetType == PacketType.Play.Server.BLOCK_BREAK_ANIMATION) {
+                WrapperPlayServerBlockBreakAnimation bba = new WrapperPlayServerBlockBreakAnimation(event);
+                Vector3i pos = bba.getBlockPosition();
+                if (pos != null && pos.getY() < cutoffBlockY) {
+                    event.setCancelled(true);
+                }
+            } else if (packetType == PacketType.Play.Server.PARTICLE) {
+                WrapperPlayServerParticle particle = new WrapperPlayServerParticle(event);
+                var pos = particle.getPosition();
+                if (pos != null && pos.getY() < cutoffBlockY) {
+                    event.setCancelled(true);
+                }
+            } else if (packetType == PacketType.Play.Server.EXPLOSION) {
+                WrapperPlayServerExplosion explosion = new WrapperPlayServerExplosion(event);
+                var pos = explosion.getPosition();
                 if (pos != null && pos.getY() < cutoffBlockY) {
                     event.setCancelled(true);
                 }
             }
         } catch (Throwable ignored) {
-        }
-    }
-
-    private void cancelIfBelow(PacketSendEvent event, Vector3i pos, int cutoffBlockY) {
-        if (pos != null && pos.getY() < cutoffBlockY) {
-            event.setCancelled(true);
         }
     }
 }
