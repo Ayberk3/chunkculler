@@ -6,6 +6,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -22,41 +23,43 @@ public final class ReloadCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("subchunkculler.admin")) {
-            sender.sendMessage(ChatColor.RED + "Bu komutu kullanmak icin yetkiniz yok.");
+            sender.sendMessage(ChatColor.RED + "You don't have permission to execute this command.");
             return true;
         }
 
-        if (args.length == 0 || !args[0].equalsIgnoreCase("reload")) {
-            sender.sendMessage(ChatColor.GOLD + "=== SubChunkCuller v" + plugin.getDescription().getVersion() + " ===");
-            sender.sendMessage(ChatColor.YELLOW + "SubChunks Below: " + ChatColor.WHITE + config.getSubChunksBelow());
-            sender.sendMessage(ChatColor.YELLOW + "Entity Hide Distance: " + ChatColor.WHITE + config.getHideDistanceY() + " blocks");
-            sender.sendMessage(ChatColor.YELLOW + "Entity Show Distance: " + ChatColor.WHITE + config.getShowDistanceY() + " blocks");
-            sender.sendMessage(ChatColor.GRAY + "Kullanim: /" + label + " reload");
-            return true;
-        }
-
-        long start = System.currentTimeMillis();
-        try {
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             config.reload();
             plugin.startEntityTrackerTask();
-        } catch (Exception e) {
-            sender.sendMessage(ChatColor.RED + "Config reload sirasinda hata olustu: " + e.getMessage());
-            plugin.getLogger().warning("SubChunkCuller reload failed: " + e.getMessage());
+
+            sender.sendMessage(ChatColor.GREEN + "[SubChunkCuller] Config reloaded successfully!");
+            sender.sendMessage(ChatColor.GRAY + " - SubChunks Below: " + ChatColor.YELLOW + config.getSubChunksBelow());
+            sender.sendMessage(ChatColor.GRAY + " - Absolute Cutoff Y: " + ChatColor.YELLOW + (config.getAbsoluteCutoffSection() << 4));
+            sender.sendMessage(ChatColor.GRAY + " - Fake Floor: " + ChatColor.YELLOW + config.isFakeFloorEnabled() + " (" + config.getFakeFloorBlock() + ")");
+            sender.sendMessage(ChatColor.GRAY + " - Entity Culling: " + ChatColor.YELLOW + (config.isEntityCullerEnabled() ? "Enabled" : "Disabled"));
             return true;
         }
-        long took = System.currentTimeMillis() - start;
 
-        sender.sendMessage(ChatColor.GREEN + "SubChunkCuller config yeniden yuklendi. (" + took + "ms)");
-        sender.sendMessage(ChatColor.GRAY + "SubChunks Below=" + config.getSubChunksBelow()
-                + ", Entity Hide Distance=" + config.getHideDistanceY() + " blocks");
+        sender.sendMessage(ChatColor.GOLD + "=== SubChunkCuller v" + plugin.getDescription().getVersion() + " ===");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " reload " + ChatColor.GRAY + "- Reload configuration");
+        sender.sendMessage(ChatColor.GRAY + "Status: SubChunks Below=" + config.getSubChunksBelow()
+                + ", Entity Culler=" + (config.isEntityCullerEnabled() ? "ON" : "OFF"));
         return true;
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1) {
-            return Collections.singletonList("reload");
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!sender.hasPermission("subchunkculler.admin")) {
+            return Collections.emptyList();
         }
+
+        if (args.length == 1) {
+            List<String> completions = new ArrayList<>();
+            if ("reload".startsWith(args[0].toLowerCase())) {
+                completions.add("reload");
+            }
+            return completions;
+        }
+
         return Collections.emptyList();
     }
 }
