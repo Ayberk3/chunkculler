@@ -96,6 +96,7 @@ public final class ChunkRefreshListener implements Listener {
     public void onWorldChange(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
         Main.VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
+        plugin.updatePlayerEntities(player);
     }
 
     @EventHandler
@@ -108,6 +109,7 @@ public final class ChunkRefreshListener implements Listener {
             return;
         }
         refreshChunksAround(player, respawnLocation);
+        plugin.updatePlayerEntities(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -134,6 +136,7 @@ public final class ChunkRefreshListener implements Listener {
         }
 
         refreshChunksAround(player, to);
+        plugin.updatePlayerEntities(player);
     }
 
     private void handleSectionCheck(Player player, Location to) {
@@ -153,6 +156,9 @@ public final class ChunkRefreshListener implements Listener {
             plugin.getLogger().info(player.getName() + " crossed sub-chunk section "
                     + oldSection + " -> " + newSection);
         }
+
+        // Instantly update entity visibility when crossing section boundary
+        plugin.updatePlayerEntities(player);
 
         if (newSection < oldSection) {
             scheduleDebouncedRefresh(player);
@@ -176,6 +182,7 @@ public final class ChunkRefreshListener implements Listener {
             pendingSince.remove(id);
             if (player.isOnline()) {
                 queueRefreshAround(player, player.getLocation());
+                plugin.updatePlayerEntities(player);
             }
         }, config.getRefreshDebounceTicks());
 
