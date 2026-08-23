@@ -29,7 +29,7 @@ public final class EntityTrackerTask extends BukkitRunnable {
     }
 
     public void updatePlayer(Player viewer) {
-        if (viewer == null || !viewer.isOnline()) {
+        if (viewer == null || !viewer.isOnline() || viewer.getWorld() == null) {
             return;
         }
 
@@ -47,32 +47,70 @@ public final class EntityTrackerTask extends BukkitRunnable {
         int cutoffSection = config.computeCutoffSection(viewerSectionY);
         int cutoffBlockY = cutoffSection << 4;
 
-        // Optimized radius: 64 blocks horizontally and 96 blocks vertically (matching Paper tracking range)
+        // Bounded search volume: 64 blocks horizontal, 96 vertical (optimal for Paper entity tracking)
         Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
                 viewerLoc, 64.0, 96.0, 64.0
         );
 
         for (Entity target : nearbyEntities) {
-            if (target.getEntityId() == viewer.getEntityId()) {
+            if (target == null || !target.isValid() || target.getEntityId() == viewer.getEntityId()) {
                 continue;
             }
 
-            // Projectiles are never hidden
+            // In-flight projectiles are never hidden
             if (target instanceof Projectile) {
                 continue;
             }
 
             double targetY = target.getLocation().getY();
 
-            // If entity is below the culled subchunk cutoff -> HIDE natively!
+            // If entity is below the culled subchunk cutoff -> HIDE recursively!
             if (targetY < cutoffBlockY) {
-                if (viewer.canSee(target)) {
-                    viewer.hideEntity(plugin, target);
-                }
+                hideEntityRecursively(viewer, target);
             } else {
-                if (!viewer.canSee(target)) {
-                    viewer.showEntity(plugin, target);
-                }
+                showEntityRecursively(viewer, target);
+            }
+        }
+    }
+
+    private void hideEntityRecursively(Player viewer, Entity entity) {
+        if (entity == null || !entity.isValid()) {
+            return;
+        }
+
+        if (viewer.canSee(entity)) {
+            viewer.hideEntity(plugin, entity);
+        }
+
+        for (Entity passenger : entity.getPassengers()) {
+            hideEntityRecursively(viewer, passenger);
+        }
+
+        if (entity.isInsideVehicle()) {
+            Entity vehicle = entity.getVehicle();
+            if (vehicle != null && viewer.canSee(vehicle)) {
+                viewer.hideEntity(plugin, vehicle);
+            }
+        }
+    }
+
+    private void showEntityRecursively(Player viewer, Entity entity) {
+        if (entity == null || !entity.isValid()) {
+            return;
+        }
+
+        if (!viewer.canSee(entity)) {
+            viewer.showEntity(plugin, entity);
+        }
+
+        for (Entity passenger : entity.getPassengers()) {
+            showEntityRecursively(viewer, passenger);
+        }
+
+        if (entity.isInsideVehicle()) {
+            Entity vehicle = entity.getVehicle();
+            if (vehicle != null && !viewer.canSee(vehicle)) {
+                viewer.showEntity(plugin, vehicle);
             }
         }
     }
