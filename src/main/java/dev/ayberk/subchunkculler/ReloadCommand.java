@@ -21,14 +21,24 @@ public final class ReloadCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("subchunkculler.admin")) {
+            sender.sendMessage(ChatColor.RED + "Bu komutu kullanmak icin yetkiniz yok.");
+            return true;
+        }
+
         if (args.length == 0 || !args[0].equalsIgnoreCase("reload")) {
-            sender.sendMessage(ChatColor.YELLOW + "Kullanim: /" + label + " reload");
+            sender.sendMessage(ChatColor.GOLD + "=== SubChunkCuller v" + plugin.getDescription().getVersion() + " ===");
+            sender.sendMessage(ChatColor.YELLOW + "SubChunks Below: " + ChatColor.WHITE + config.getSubChunksBelow());
+            sender.sendMessage(ChatColor.YELLOW + "Entity Hide Distance: " + ChatColor.WHITE + config.getHideDistanceY() + " blocks");
+            sender.sendMessage(ChatColor.YELLOW + "Entity Show Distance: " + ChatColor.WHITE + config.getShowDistanceY() + " blocks");
+            sender.sendMessage(ChatColor.GRAY + "Kullanim: /" + label + " reload");
             return true;
         }
 
         long start = System.currentTimeMillis();
         try {
             config.reload();
+            plugin.startEntityTrackerTask();
         } catch (Exception e) {
             sender.sendMessage(ChatColor.RED + "Config reload sirasinda hata olustu: " + e.getMessage());
             plugin.getLogger().warning("SubChunkCuller reload failed: " + e.getMessage());
@@ -37,8 +47,8 @@ public final class ReloadCommand implements CommandExecutor, TabCompleter {
         long took = System.currentTimeMillis() - start;
 
         sender.sendMessage(ChatColor.GREEN + "SubChunkCuller config yeniden yuklendi. (" + took + "ms)");
-        sender.sendMessage(ChatColor.GRAY + "sub-chunks-below=" + config.getSubChunksBelow()
-                + ", absolute-cutoff-y=" + (config.getAbsoluteCutoffSection() << 4));
+        sender.sendMessage(ChatColor.GRAY + "SubChunks Below=" + config.getSubChunksBelow()
+                + ", Entity Hide Distance=" + config.getHideDistanceY() + " blocks");
         return true;
     }
 
