@@ -36,16 +36,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.6
-          name: "SubChunkCuller v1.0.6 (Zero-Lag & Native Entity Culling)"
+          tag_name: v1.0.7
+          name: "SubChunkCuller v1.0.7 (Chunk Resend Engine & Seamless Movement Fix)"
           body: |
-            ## 🚀 SubChunkCuller v1.0.6 (Zero-Lag Master Release)
+            ## 🚀 SubChunkCuller v1.0.7 (Master Movement & Chunk Resend Release)
 
-            ### 🎯 Özellikler & Çözümler:
-            - **OP Bypass Yetkisi Düzeltildi:** OP olan yöneticilerin filtreden atlanması engellendi. Artık adminler dahil herkes için yer altındaki varlıklar gizlenir.
-            - **Paper Native `player.hideEntity` Entegrasyonu:** Paper'ın resmi gizleme API'sine geçildi. Vagonlar, sandık/huni vagonları, yaratıklar ve eşyalar yer altına girdiği anda istemciden tamamen silinir.
+            ### 🎯 En Kritik Düzeltmeler:
+            - **Yatay ve Dikey Hareketlerde Chunk Yüklenmeme Sorunu Çözüldü:** Paper 1.20+'da çalışmayan eski `world.refreshChunk` yerine, `ChunkResender` NMS paket motoru geliştirildi. Oyuncu hareket ettiğinde veya seviye değiştirdiğinde chunklar anında oyuncuya yeniden paketlenip gönderilir.
+            - **Tam Varlık ve Vagon Gizleme:** Paper yerel `hideEntity` API'si ve PacketEvents filtreleriyle hunili vagonlar, yaratıklar ve varlıklar yerin altında asla görünmez.
             - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme ve optimize edilmiş 64 blokluk takip yarıçapı ile sunucuyu asla yormaz.
-            - **Tam Paket Koruması:** Hareket, can, hasar, iksir ve ses paketleri tamamen durdurulur.
-            - **TAB Listesi & Ok Koruması:** `TAB` listesi ve atılan oklar bozulmaz.
+            - **Patlama & TNT Koruması:** Yeraltı patlama paketleri filtrelenir.
           files: target/SubChunkCuller-1.0.0.jar
           token: ${{ secrets.GITHUB_TOKEN }}
