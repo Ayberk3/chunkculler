@@ -72,14 +72,14 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
                 continue;
             }
 
-            // Fake Floor Section (Exactly 1 section below cutoff, top row y=15)
+            // Fake floor section (exactly at floorSectionY, top block layer y=15)
             if (drawFloor && actualSectionY == floorSectionY) {
-                chunks[i] = applyFloorToSection(chunks[i], clientVersion);
+                chunks[i] = buildFloorSection(clientVersion);
                 strippedCount++;
                 continue;
             }
 
-            // Fully stripped sections below fake floor
+            // Empty section below floor
             if (!isEmptySection(chunks[i])) {
                 chunks[i] = buildEmptySection(clientVersion);
                 strippedCount++;
@@ -143,43 +143,22 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
 
     private BaseChunk buildEmptySection(ClientVersion clientVersion) {
         Chunk_v1_18 section = new Chunk_v1_18();
-        int biomeId = Biomes.PLAINS.getId(clientVersion);
-        for (int bx = 0; bx < 4; bx++) {
-            for (int by = 0; by < 4; by++) {
-                for (int bz = 0; bz < 4; bz++) {
-                    section.getBiomeData().set(bx, by, bz, biomeId);
-                }
-            }
-        }
+        section.set(0, 0, 0, 0);
+        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
         return section;
     }
 
-    private BaseChunk applyFloorToSection(BaseChunk existing, ClientVersion clientVersion) {
+    private BaseChunk buildFloorSection(ClientVersion clientVersion) {
+        Chunk_v1_18 section = new Chunk_v1_18();
         WrappedBlockState floorState = resolveFloorState(clientVersion);
         int stateId = floorState.getGlobalId();
-        int biomeId = Biomes.PLAINS.getId(clientVersion);
 
-        Chunk_v1_18 section = (existing instanceof Chunk_v1_18 c) ? c : new Chunk_v1_18();
-
-        // 1. Clear all blocks below y=15 and place floor block at y=15
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-                for (int y = 0; y < 15; y++) {
-                    section.set(x, y, z, 0); // Air
-                }
-                section.set(x, 15, z, stateId); // Deepslate / Configured block
+                section.set(x, 15, z, stateId);
             }
         }
-
-        // 2. Ensure biome palette is fully populated (prevent client rendering crash)
-        for (int bx = 0; bx < 4; bx++) {
-            for (int by = 0; by < 4; by++) {
-                for (int bz = 0; bz < 4; bz++) {
-                    section.getBiomeData().set(bx, by, bz, biomeId);
-                }
-            }
-        }
-
+        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
         return section;
     }
 
