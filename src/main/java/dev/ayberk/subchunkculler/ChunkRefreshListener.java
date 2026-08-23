@@ -170,7 +170,7 @@ public final class ChunkRefreshListener implements Listener {
             // Immediately update entity tracking
             plugin.updatePlayerEntities(player);
 
-            // Re-send chunks when crossing section boundary
+            // Re-send chunks when crossing section boundary across full view distance
             scheduleDebouncedRefresh(player);
         }
     }
@@ -214,7 +214,13 @@ public final class ChunkRefreshListener implements Listener {
         World world = around.getWorld();
         int centerX = around.getBlockX() >> 4;
         int centerZ = around.getBlockZ() >> 4;
-        int radius = config.getRefreshRadius();
+
+        int viewDist = 8;
+        try {
+            viewDist = player.getClientViewDistance();
+        } catch (Throwable ignored) {
+        }
+        int radius = Math.max(config.getRefreshRadius(), Math.min(viewDist, 12));
 
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
