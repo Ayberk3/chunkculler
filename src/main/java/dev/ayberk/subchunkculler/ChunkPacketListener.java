@@ -1,10 +1,8 @@
 package dev.ayberk.subchunkculler;
 
-import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
-import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
@@ -26,7 +24,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
     private static final TileEntity[] EMPTY_TILE_ENTITIES = new TileEntity[0];
     private final ConfigManager config;
     private final Logger logger;
-    private final boolean modernHeightmaps;
     private final Map<ClientVersion, WrappedBlockState> floorStateCache = new ConcurrentHashMap<>();
     private String cachedFloorBlockName = "";
 
@@ -34,8 +31,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         super(PacketListenerPriority.NORMAL);
         this.config = config;
         this.logger = Logger.getLogger("SubChunkCuller");
-        this.modernHeightmaps = PacketEvents.getAPI().getServerManager()
-                .getVersion().isNewerThanOrEquals(ServerVersion.V_1_21_5);
     }
 
     @Override
@@ -135,9 +130,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
                 ? EMPTY_TILE_ENTITIES
                 : (keptCount == kept.length ? kept : java.util.Arrays.copyOf(kept, keptCount));
 
-        Column rebuilt = modernHeightmaps
-                ? new Column(column.getX(), column.getZ(), column.isFullChunk(), column.getChunks(), filtered, column.getHeightmaps())
-                : new Column(column.getX(), column.getZ(), column.isFullChunk(), column.getChunks(), filtered, column.getHeightMaps());
+        Column rebuilt = new Column(column.getX(), column.getZ(), column.isFullChunk(), column.getChunks(), filtered, column.getHeightMaps());
         wrapper.setColumn(rebuilt);
         return removed;
     }
@@ -147,14 +140,14 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
     }
 
     private BaseChunk buildEmptySection(ClientVersion clientVersion) {
-        Chunk_v1_18 section = new Chunk_v1_18(clientVersion);
+        Chunk_v1_18 section = new Chunk_v1_18();
         section.set(0, 0, 0, 0);
         section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
         return section;
     }
 
     private BaseChunk buildFloorSection(ClientVersion clientVersion) {
-        Chunk_v1_18 section = new Chunk_v1_18(clientVersion);
+        Chunk_v1_18 section = new Chunk_v1_18();
         WrappedBlockState floorState = resolveFloorState(clientVersion);
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
