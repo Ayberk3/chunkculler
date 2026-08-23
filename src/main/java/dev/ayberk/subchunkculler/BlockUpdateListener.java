@@ -70,7 +70,7 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
                 }
             } else if (packetType == PacketType.Play.Server.BLOCK_ENTITY_DATA) {
                 WrapperPlayServerBlockEntityData bed = new WrapperPlayServerBlockEntityData(event);
-                Vector3i pos = bed.getBlockPosition();
+                Vector3i pos = bed.getPosition();
                 if (pos != null && pos.getY() < cutoffBlockY) {
                     event.setCancelled(true);
                 }
