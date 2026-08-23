@@ -26,10 +26,6 @@ block-update-filter:
 # 2. Zero-Leak Vertical Entity Anti-ESP Settings
 entity-culler:
   enabled: true
-  # Hide entities >= 48 blocks below the viewer
-  hide-distance-y: 48.0
-  # Reveal entities only when viewer gets within <= 42 blocks (Hysteresis buffer)
-  show-distance-y: 42.0
   # Scan interval in ticks (4 ticks = 0.2s)
   check-interval-ticks: 4
 
@@ -38,6 +34,9 @@ entity-culler:
     hide-monsters: true
     hide-animals: false
     hide-misc: true
+    # Keep town NPCs (FancyNpcs/Citizens) and holograms visible even if underground
+    bypass-npcs: true
+    bypass-holograms: true
 
   # Dampen deep underground sound packets (Sound ESP prevention)
   dampen-underground-sounds: true
