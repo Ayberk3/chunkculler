@@ -115,6 +115,9 @@ public final class EntityTrackerTask extends BukkitRunnable {
 
         if (viewer.canSee(entity)) {
             viewer.hideEntity(plugin, entity);
+            if (entity instanceof Player) {
+                Main.addCulledPlayer(viewer.getUniqueId(), entity.getUniqueId());
+            }
         }
 
         for (Entity passenger : entity.getPassengers()) {
@@ -125,6 +128,9 @@ public final class EntityTrackerTask extends BukkitRunnable {
             Entity vehicle = entity.getVehicle();
             if (vehicle != null && viewer.canSee(vehicle)) {
                 viewer.hideEntity(plugin, vehicle);
+                if (vehicle instanceof Player) {
+                    Main.addCulledPlayer(viewer.getUniqueId(), vehicle.getUniqueId());
+                }
             }
         }
     }
@@ -136,6 +142,9 @@ public final class EntityTrackerTask extends BukkitRunnable {
 
         if (!viewer.canSee(entity)) {
             viewer.showEntity(plugin, entity);
+            if (entity instanceof Player) {
+                Main.removeCulledPlayer(viewer.getUniqueId(), entity.getUniqueId());
+            }
         }
 
         for (Entity passenger : entity.getPassengers()) {
@@ -146,6 +155,9 @@ public final class EntityTrackerTask extends BukkitRunnable {
             Entity vehicle = entity.getVehicle();
             if (vehicle != null && !viewer.canSee(vehicle)) {
                 viewer.showEntity(plugin, vehicle);
+                if (vehicle instanceof Player) {
+                    Main.removeCulledPlayer(viewer.getUniqueId(), vehicle.getUniqueId());
+                }
             }
         }
     }
