@@ -19,6 +19,8 @@ public final class ConfigManager implements Listener {
 
     // SubChunk Settings
     private volatile int subChunksBelow;
+    private volatile int absoluteCutoffY;
+    private volatile int absoluteCutoffSection;
     private volatile boolean debugMode;
     private volatile int refreshRadius;
     private volatile long refreshCooldownMs;
@@ -53,12 +55,14 @@ public final class ConfigManager implements Listener {
 
         // 1. SubChunk
         this.subChunksBelow = Math.max(0, cfg.getInt("sub-chunks-below", 2));
+        this.absoluteCutoffY = cfg.getInt("absolute-cutoff-y", 0);
+        this.absoluteCutoffSection = this.absoluteCutoffY >> 4;
         this.debugMode = cfg.getBoolean("debug-mode", false);
         this.refreshRadius = Math.max(1, cfg.getInt("refresh-radius", 8));
         this.refreshCooldownMs = Math.max(0L, cfg.getLong("refresh-cooldown-ms", 250L));
         this.refreshDebounceTicks = Math.max(0, cfg.getInt("refresh-debounce-ticks", 4));
         this.refreshChunksPerTick = Math.max(1, cfg.getInt("refresh-chunks-per-tick", 12));
-        this.fakeFloorEnabled = cfg.getBoolean("fake-floor.enabled", false);
+        this.fakeFloorEnabled = cfg.getBoolean("fake-floor.enabled", true);
         String configuredBlock = cfg.getString("fake-floor.block", "minecraft:deepslate");
         this.fakeFloorBlock = (configuredBlock == null || configuredBlock.isBlank())
                 ? "minecraft:deepslate" : configuredBlock.trim();
@@ -118,6 +122,14 @@ public final class ConfigManager implements Listener {
         return subChunksBelow;
     }
 
+    public int getAbsoluteCutoffY() {
+        return absoluteCutoffY;
+    }
+
+    public int getAbsoluteCutoffSection() {
+        return absoluteCutoffSection;
+    }
+
     public boolean isDebugMode() {
         return debugMode;
     }
@@ -139,12 +151,12 @@ public final class ConfigManager implements Listener {
     }
 
     /**
-     * Pure relative vertical cutoff: only subchunks strictly below the player's altitude
-     * (playerSectionY - subChunksBelow) are culled. All horizontal chunks at and above the player
-     * remain 100% visible across the entire view distance.
+     * Computes the vertical cutoff section using both relative sub-chunks-below
+     * and the absolute-cutoff-y boundary limit.
      */
     public int computeCutoffSection(int playerSectionY) {
-        return playerSectionY - subChunksBelow;
+        int dynamicCutoff = playerSectionY - subChunksBelow;
+        return Math.min(dynamicCutoff, absoluteCutoffSection);
     }
 
     public boolean isFakeFloorEnabled() {
