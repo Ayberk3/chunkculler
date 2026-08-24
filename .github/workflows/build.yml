@@ -36,14 +36,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.1
-          name: "SubChunkCuller v1.1.1 (Instant Underground Join & Zero-Lag Fix)"
+          tag_name: v1.1.2
+          name: "SubChunkCuller v1.1.2 (Absolute Cutoff & Instant Join Release)"
           body: |
-            ## 🚀 SubChunkCuller v1.1.1 (Instant Underground Join Release)
+            ## 🚀 SubChunkCuller v1.1.2
 
             ### 🎯 En Kritik Düzeltmeler:
-            - **Yerin Altında Doğunca 30 Saniye Takılı Kalma/Yüklenmeme Sorunu Çözüldü:** `PlayerSpawnLocationEvent` ve canlı `getLocation()` senkronizasyonu eklendi. Oyuncu yer altında doğduğu ilk saniyeden itibaren etrafındaki tüm mağaralar ve zemin sıfır gecikmeyle yüklenir.
-            - **SubChunkCuller-1.1.1.jar:** Jar ismi sürümle birebir eşleştirildi.
+            - **Absolute Cutoff (absolute-cutoff-y) Düzeltildi:** `absolute-cutoff-y: 0` ayarı tamamen aktif edildi. Oyuncu yüzeydeyken (Y=80) kesinti bu seviyeden (Y=0) başlar. Oyuncu yerin altına indiğinde ise göreceli `sub-chunks-below` dinamik olarak devreye girer.
+            - **Yerin Altında Doğunca Anında Yükleme:** `PlayerSpawnLocationEvent` ve canlı konum senkronizasyonu ile yer altında doğar doğmaz tüm mağaralar 0 gecikmeyle yüklenir.
+            - **SubChunkCuller-1.1.2.jar:** Jar ismi sürümle birebir eşitlendi.
             - **100% Kararlı Fake Deepslate Zemin:** Kesinti sınırının en altında pürüzsüz Deepslate tabakası oluşturulur.
             - **Saf Dikey Gizleme (Sıfır Yatay Kesinti):** Oyuncunun bulunduğu Y seviyesinde yatay görüş (6-12 chunk) %100 açık kalır.
             - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty paket filtreleme.
