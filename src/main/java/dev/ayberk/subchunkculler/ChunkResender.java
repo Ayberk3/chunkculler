@@ -68,10 +68,20 @@ public final class ChunkResender {
             getHandleWorld = craftWorldClass.getMethod("getHandle");
             Class<?> serverLevelClass = getHandleWorld.getReturnType();
 
+            // Prefer getChunkIfLoaded to avoid any disk I/O on main thread
             for (Method m : serverLevelClass.getMethods()) {
-                if (m.getName().equals("getChunk") && m.getParameterCount() == 2 && m.getParameterTypes()[0] == int.class) {
+                if ((m.getName().equals("getChunkIfLoaded") || m.getName().equals("getChunkIfLoadedImmediately"))
+                        && m.getParameterCount() == 2 && m.getParameterTypes()[0] == int.class) {
                     getChunkMethod = m;
                     break;
+                }
+            }
+            if (getChunkMethod == null) {
+                for (Method m : serverLevelClass.getMethods()) {
+                    if (m.getName().equals("getChunk") && m.getParameterCount() == 2 && m.getParameterTypes()[0] == int.class) {
+                        getChunkMethod = m;
+                        break;
+                    }
                 }
             }
 
@@ -108,7 +118,7 @@ public final class ChunkResender {
                 LOGGER.info("ChunkResender initialized successfully (Native NMS Packet Delivery Active).");
             } else {
                 failed = true;
-                LOGGER.warning("ChunkResender could not find all NMS methods; falling back to standard Bukkit loading.");
+                LOGGER.warning("ChunkResender could not find all NMS methods; falling back to standard Bukkit chunk loading.");
             }
         } catch (Throwable t) {
             failed = true;
