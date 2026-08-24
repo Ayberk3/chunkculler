@@ -10,20 +10,16 @@ import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitTask;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class ChunkRefreshListener implements Listener {
 
     private final Main plugin;
     private final ConfigManager config;
-
-    private final Map<UUID, Long> lastRefreshAt = new ConcurrentHashMap<>();
-    private final Map<UUID, BukkitTask> pendingDebounce = new ConcurrentHashMap<>();
-    private final Map<UUID, Long> pendingSince = new ConcurrentHashMap<>();
-    private static final long MAX_DEBOUNCE_MS = 1000L;
 
     // BUG-3 FIX: Queue size cap to prevent OOM
     private static final int MAX_QUEUE_SIZE = 5000;
@@ -42,7 +38,6 @@ public final class ChunkRefreshListener implements Listener {
         }
     }
 
-    // BUG-3 FIX: Use ConcurrentLinkedQueue instead of ArrayDeque
     private final ConcurrentLinkedQueue<RefreshEntry> refreshQueue = new ConcurrentLinkedQueue<>();
     private BukkitTask drainTask;
 
@@ -63,11 +58,6 @@ public final class ChunkRefreshListener implements Listener {
             drainTask.cancel();
             drainTask = null;
         }
-        for (BukkitTask task : pendingDebounce.values()) {
-            task.cancel();
-        }
-        pendingDebounce.clear();
-        pendingSince.clear();
         refreshQueue.clear();
     }
 
@@ -116,13 +106,7 @@ public final class ChunkRefreshListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         Main.VIEWER_SECTION_Y.remove(id);
-        lastRefreshAt.remove(id);
-        pendingSince.remove(id);
-
-        BukkitTask task = pendingDebounce.remove(id);
-        if (task != null) {
-            task.cancel();
-        }
+        refreshQueue.removeIf(entry -> entry.player.getUniqueId().equals(id));
     }
 
     @EventHandler
@@ -130,6 +114,9 @@ public final class ChunkRefreshListener implements Listener {
         Player player = event.getPlayer();
         Main.VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
         plugin.updatePlayerEntities(player);
+        if (config.isWorldEnabled(player.getWorld().getName())) {
+            queueRefreshAround(player, player.getLocation());
+        }
     }
 
     @EventHandler
@@ -141,8 +128,8 @@ public final class ChunkRefreshListener implements Listener {
         if (!config.isWorldEnabled(respawnLocation.getWorld().getName())) {
             return;
         }
-        refreshChunksAround(player, respawnLocation);
         plugin.updatePlayerEntities(player);
+        queueRefreshAround(player, respawnLocation);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -164,8 +151,8 @@ public final class ChunkRefreshListener implements Listener {
             return;
         }
 
-        refreshChunksAround(player, to);
         plugin.updatePlayerEntities(player);
+        queueRefreshAround(player, to);
     }
 
     private void handleSectionCheck(Player player, Location to) {
@@ -187,51 +174,15 @@ public final class ChunkRefreshListener implements Listener {
                         + oldSection + " -> " + newSection);
             }
 
+            // Immediately update entities and queue chunks (sorted by distance) to prevent falling into the void.
             plugin.updatePlayerEntities(player);
-            scheduleDebouncedRefresh(player);
+            queueRefreshAround(player, to);
         }
-    }
-
-    private void scheduleDebouncedRefresh(Player player) {
-        UUID id = player.getUniqueId();
-        long now = System.currentTimeMillis();
-
-        BukkitTask existing = pendingDebounce.get(id);
-        Long since = pendingSince.get(id);
-        if (existing != null && since != null && now - since < MAX_DEBOUNCE_MS) {
-            existing.cancel();
-        } else {
-            pendingSince.put(id, now);
-        }
-
-        BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            pendingDebounce.remove(id);
-            pendingSince.remove(id);
-            if (player.isOnline()) {
-                queueRefreshAround(player, player.getLocation());
-                plugin.updatePlayerEntities(player);
-            }
-        }, config.getRefreshDebounceTicks());
-
-        pendingDebounce.put(id, task);
-    }
-
-    private void refreshChunksAround(Player player, Location around) {
-        UUID id = player.getUniqueId();
-        long now = System.currentTimeMillis();
-        Long last = lastRefreshAt.get(id);
-        if (last != null && now - last < config.getRefreshCooldownMs()) {
-            return;
-        }
-        lastRefreshAt.put(id, now);
-        queueRefreshAround(player, around);
     }
 
     private void queueRefreshAround(Player player, Location around) {
-        // BUG-3 FIX: Cap queue size to prevent OOM
-        if (refreshQueue.size() >= MAX_QUEUE_SIZE) {
-            return;
-        }
+        // Remove stale refresh tasks for this player to prevent queue flooding when falling rapidly
+        refreshQueue.removeIf(entry -> entry.player.getUniqueId().equals(player.getUniqueId()));
 
         World world = around.getWorld();
         int centerX = around.getBlockX() >> 4;
@@ -244,14 +195,30 @@ public final class ChunkRefreshListener implements Listener {
         }
         int radius = Math.max(config.getRefreshRadius(), Math.min(viewDist, 12));
 
+        List<RefreshEntry> newEntries = new ArrayList<>();
+
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
                 int cx = centerX + dx;
                 int cz = centerZ + dz;
                 if (world.isChunkLoaded(cx, cz)) {
-                    refreshQueue.add(new RefreshEntry(player, world, cx, cz));
+                    newEntries.add(new RefreshEntry(player, world, cx, cz));
                 }
             }
+        }
+
+        // Sort chunks so the chunk the player is standing in (and immediate neighbors) are refreshed FIRST
+        newEntries.sort(Comparator.comparingInt(e -> {
+            int dx = e.cx - centerX;
+            int dz = e.cz - centerZ;
+            return dx * dx + dz * dz;
+        }));
+
+        for (RefreshEntry entry : newEntries) {
+            if (refreshQueue.size() >= MAX_QUEUE_SIZE) {
+                break;
+            }
+            refreshQueue.add(entry);
         }
     }
 }
