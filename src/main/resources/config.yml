@@ -5,10 +5,13 @@
 
 # 1. SubChunk (Block & Section) Culling Settings
 # Number of 16-block subchunks below the player to keep visible.
-# Example: If set to 1 or 2, everything at and above the player's level
-# is 100% visible horizontally across the entire view distance.
-# Only sections strictly below (playerSectionY - sub-chunks-below) are culled.
+# Example: If set to 2, 2 sections below the player are kept intact.
 sub-chunks-below: 2
+
+# Absolute cutoff block Y level. Sections above this Y level are NEVER culled.
+# When player is on the surface (e.g. Y=80), culling will start at this Y level (e.g. Y=0).
+# When player goes underground below this Y level, relative sub-chunks-below takes over.
+absolute-cutoff-y: 0
 
 # Worlds where SubChunkCuller is enabled
 enabled-worlds:
