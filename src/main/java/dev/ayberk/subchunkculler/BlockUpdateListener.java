@@ -41,6 +41,10 @@ public final class BlockUpdateListener extends PacketListenerAbstract {
             return;
         }
 
+        if (player.hasPermission("subchunkculler.bypass")) {
+            return;
+        }
+
         if (!config.isWorldEnabled(player.getWorld().getName())) {
             return;
         }
