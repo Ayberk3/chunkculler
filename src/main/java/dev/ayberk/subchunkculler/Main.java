@@ -3,6 +3,7 @@ package dev.ayberk.subchunkculler;
 import com.github.retrooper.packetevents.PacketEvents;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -98,6 +99,19 @@ public final class Main extends JavaPlugin {
         if (entityTrackerTask != null && !entityTrackerTask.isCancelled()) {
             entityTrackerTask.cancel();
         }
+
+        // BUG-9 FIX: Show all hidden entities before disabling
+        for (Player viewer : getServer().getOnlinePlayers()) {
+            for (Entity entity : viewer.getWorld().getEntities()) {
+                if (entity != null && entity.isValid() && !viewer.canSee(entity)) {
+                    try {
+                        viewer.showEntity(this, entity);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+
         if (chunkPacketListener != null) {
             chunkPacketListener.clearCache();
             PacketEvents.getAPI().getEventManager().unregisterListener(chunkPacketListener);
