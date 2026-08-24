@@ -8,6 +8,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitTask;
+import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.ArrayDeque;
 import java.util.Map;
@@ -86,10 +87,27 @@ public final class ChunkRefreshListener implements Listener {
         }
     }
 
-    @EventHandler
-    public void onLogin(PlayerLoginEvent event) {
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onSpawnLocation(PlayerSpawnLocationEvent event) {
+        if (event.getSpawnLocation() != null) {
+            Main.VIEWER_SECTION_Y.put(event.getPlayer().getUniqueId(), event.getSpawnLocation().getBlockY() >> 4);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        Main.VIEWER_SECTION_Y.put(player.getUniqueId(), player.getLocation().getBlockY() >> 4);
+        int realSection = player.getLocation().getBlockY() >> 4;
+        Main.VIEWER_SECTION_Y.put(player.getUniqueId(), realSection);
+        plugin.updatePlayerEntities(player);
+
+        // Immediate 1-tick resend around player on join to guarantee 0s loading delay
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline() && config.isWorldEnabled(player.getWorld().getName())) {
+                queueRefreshAround(player, player.getLocation());
+                plugin.updatePlayerEntities(player);
+            }
+        }, 1L);
     }
 
     @EventHandler
