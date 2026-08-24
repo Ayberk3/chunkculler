@@ -36,17 +36,25 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.4
-          name: "SubChunkCuller v1.1.4 (Pure Lean Architecture & Zero-Overhead Release)"
+          tag_name: v1.2.0
+          name: "SubChunkCuller v1.2.0 (10-Bug Mega Fix & Deep Audit Release)"
           body: |
-            ## 🚀 SubChunkCuller v1.1.4 (Pure Lean Release)
+            ## 🚀 SubChunkCuller v1.2.0 (10-Bug Mega Fix Release)
 
-            ### 💎 Yapılan Temizlik & Optimizasyonlar:
-            - **Gereksiz Özellikler & Çift Bellek Haritaları Kaldırıldı:** Eski entity takipçileri, gereksiz HashMap'ler ve çift kayıtlar tamamen silindi.
-            - **Doğrudan Paper Native Motor:** Paper'ın kendi yerel `hideEntity` sistemiyle minimum bellek tüketimi ve sıfır GC yükü.
-            - **Sıfır Bellek Tahsisi (Zero-Allocation Chunk Templates):** Boş ve Deepslate bölümleri önbellekten doğrudan atanır ($O(1)$).
-            - **Yerin Altında Doğunca 0-ms Yükleme:** Doğuş anında tüm mağaralar anında yüklenir.
-            - **SubChunkCuller-1.1.4.jar:** Sürümle birebir eşleştirilmiş güncel dosya.
-            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty paket filtreleme.
+            ### 🔴 Kritik Bug Düzeltmeleri:
+            - **BUG-1: `computeCutoffSection` mantık hatası düzeltildi.** `Math.min` → `Math.max`. Absolute cutoff artık doğru çalışıyor: yüzeyde Y=0 sınırı, yeraltında dinamik takip.
+            - **BUG-2: Shared mutable chunk templates kaldırıldı.** Her paket için taze kopya oluşturularak çoklu oyuncuda veri bozulması riski sıfırlandı.
+            - **BUG-3: ArrayDeque → ConcurrentLinkedQueue.** Thread-safe kuyruk + MAX_QUEUE_SIZE=5000 ile OutOfMemoryError riski engellendi.
+            - **BUG-4: Her ses paketinde reflection taraması kaldırıldı.** Netty thread performansı dramatik arttı.
+
+            ### 🟡 Orta Bug Düzeltmeleri:
+            - **BUG-5: getNearbyEntities → getWorld().getEntities().** Sıfır bellek tahsisi, manuel mesafe kontrolü.
+            - **BUG-6: `subchunkculler.bypass` izni artık tüm sistemlerde kontrol ediliyor.** Admin/OP bypass çalışır hale geldi.
+            - **BUG-7: Entity tipi filtreleri (hide-players, hide-monsters, bypass-npcs, bypass-holograms) config.yml'e eklendi** ve EntityTrackerTask'ta aktif hale getirildi.
+            - **BUG-8: NMS chunk yükleme kontrolü güçlendirildi.**
+
+            ### 🟢 Düşük Risk Düzeltmeleri:
+            - **BUG-9: Plugin kapatılırken tüm gizli entity'ler geri gösterilir.** Reload'da hayalet entity sorunu çözüldü.
+            - **BUG-10: Boş legacy sınıflar temizlendi.**
           files: target/SubChunkCuller-*.jar
           token: ${{ secrets.GITHUB_TOKEN }}
