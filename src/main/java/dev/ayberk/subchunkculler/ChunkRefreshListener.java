@@ -10,10 +10,10 @@ import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitTask;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
-import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class ChunkRefreshListener implements Listener {
 
@@ -24,6 +24,9 @@ public final class ChunkRefreshListener implements Listener {
     private final Map<UUID, BukkitTask> pendingDebounce = new ConcurrentHashMap<>();
     private final Map<UUID, Long> pendingSince = new ConcurrentHashMap<>();
     private static final long MAX_DEBOUNCE_MS = 1000L;
+
+    // BUG-3 FIX: Queue size cap to prevent OOM
+    private static final int MAX_QUEUE_SIZE = 5000;
 
     private static final class RefreshEntry {
         final Player player;
@@ -39,7 +42,8 @@ public final class ChunkRefreshListener implements Listener {
         }
     }
 
-    private final ArrayDeque<RefreshEntry> refreshQueue = new ArrayDeque<>();
+    // BUG-3 FIX: Use ConcurrentLinkedQueue instead of ArrayDeque
+    private final ConcurrentLinkedQueue<RefreshEntry> refreshQueue = new ConcurrentLinkedQueue<>();
     private BukkitTask drainTask;
 
     public ChunkRefreshListener(Main plugin, ConfigManager config) {
@@ -79,7 +83,6 @@ public final class ChunkRefreshListener implements Listener {
             if (player != null && player.isOnline() && entry.world.isChunkLoaded(entry.cx, entry.cz)) {
                 boolean sent = ChunkResender.resendChunk(player, entry.world, entry.cx, entry.cz);
                 if (!sent) {
-                    // Fallback to paper chunk refresh if available
                     //noinspection deprecation
                     entry.world.refreshChunk(entry.cx, entry.cz);
                 }
@@ -101,7 +104,6 @@ public final class ChunkRefreshListener implements Listener {
         Main.VIEWER_SECTION_Y.put(player.getUniqueId(), realSection);
         plugin.updatePlayerEntities(player);
 
-        // Immediate 1-tick resend around player on join to guarantee 0s loading delay
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline() && config.isWorldEnabled(player.getWorld().getName())) {
                 queueRefreshAround(player, player.getLocation());
@@ -185,10 +187,7 @@ public final class ChunkRefreshListener implements Listener {
                         + oldSection + " -> " + newSection);
             }
 
-            // Immediately update entity tracking
             plugin.updatePlayerEntities(player);
-
-            // Re-send chunks when crossing section boundary across full view distance
             scheduleDebouncedRefresh(player);
         }
     }
@@ -229,6 +228,11 @@ public final class ChunkRefreshListener implements Listener {
     }
 
     private void queueRefreshAround(Player player, Location around) {
+        // BUG-3 FIX: Cap queue size to prevent OOM
+        if (refreshQueue.size() >= MAX_QUEUE_SIZE) {
+            return;
+        }
+
         World world = around.getWorld();
         int centerX = around.getBlockX() >> 4;
         int centerZ = around.getBlockZ() >> 4;
