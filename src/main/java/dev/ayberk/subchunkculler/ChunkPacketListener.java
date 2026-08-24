@@ -70,10 +70,13 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             return;
         }
 
+        // Always prioritize the player's true live altitude on join & packet send
+        int currentLiveSection = player.getLocation().getBlockY() >> 4;
         Integer playerSectionY = Main.VIEWER_SECTION_Y.get(player.getUniqueId());
-        if (playerSectionY == null) {
-            playerSectionY = player.getLocation().getBlockY() >> 4;
-            Main.VIEWER_SECTION_Y.put(player.getUniqueId(), playerSectionY);
+
+        if (playerSectionY == null || playerSectionY != currentLiveSection) {
+            playerSectionY = currentLiveSection;
+            Main.VIEWER_SECTION_Y.put(player.getUniqueId(), currentLiveSection);
         }
 
         final int cutoffSection = config.computeCutoffSection(playerSectionY);
