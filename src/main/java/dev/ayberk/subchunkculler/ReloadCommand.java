@@ -29,7 +29,8 @@ public final class ReloadCommand implements CommandExecutor, TabCompleter {
             config.reload();
             plugin.startEntityTrackerTask();
             sender.sendMessage("§8[§bSubChunkCuller§8] §aReload complete! §7(SubChunks: §f"
-                    + config.getSubChunksBelow() + "§7, Radius: §f"
+                    + config.getSubChunksBelow() + "§7, Cutoff-Y: §f"
+                    + config.getAbsoluteCutoffY() + "§7, Radius: §f"
                     + config.getRefreshRadius() + "§7, Entities: §f"
                     + config.isEntityCullerEnabled() + "§7, Fake Floor: §f"
                     + config.isFakeFloorEnabled() + "§7)");
