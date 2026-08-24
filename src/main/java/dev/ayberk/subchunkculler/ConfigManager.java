@@ -151,12 +151,22 @@ public final class ConfigManager implements Listener {
     }
 
     /**
-     * Computes the vertical cutoff section using both relative sub-chunks-below
-     * and the absolute-cutoff-y boundary limit.
+     * Computes the vertical cutoff section.
+     *
+     * Logic:
+     * - dynamicCutoff = playerSectionY - subChunksBelow
+     *   (how far below the player we allow visibility)
+     * - absoluteCutoffSection = absolute-cutoff-y >> 4
+     *   (the absolute floor: never cull ABOVE this section)
+     *
+     * We take Math.max: whichever is HIGHER (less aggressive) wins.
+     * - Surface player Y=80, section=5, dynamic=3, absolute=0 → max(3,0)=3 → cull below section 3 (Y=48). Good.
+     * - Underground player Y=-20, section=-2, dynamic=-4, absolute=0 → max(-4,0)=0 → cull below section 0 (Y=0). Good.
+     * - Deep underground player Y=-50, section=-4, dynamic=-6, absolute=0 → max(-6,0)=0 → cull below Y=0. Good.
      */
     public int computeCutoffSection(int playerSectionY) {
         int dynamicCutoff = playerSectionY - subChunksBelow;
-        return Math.min(dynamicCutoff, absoluteCutoffSection);
+        return Math.max(dynamicCutoff, absoluteCutoffSection);
     }
 
     public boolean isFakeFloorEnabled() {
