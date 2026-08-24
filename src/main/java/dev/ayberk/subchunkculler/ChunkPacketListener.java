@@ -15,6 +15,8 @@ import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 public final class ChunkPacketListener extends PacketListenerAbstract {
@@ -22,6 +24,11 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
     private static final TileEntity[] EMPTY_TILE_ENTITIES = new TileEntity[0];
     private final ConfigManager config;
     private final Logger logger;
+
+    // Ultra-fast zero-allocation section templates cached per ClientVersion
+    private final Map<ClientVersion, BaseChunk> emptySectionCache = new ConcurrentHashMap<>();
+    private final Map<Long, BaseChunk> fakeFloorSectionCache = new ConcurrentHashMap<>();
+
     private int cachedFloorBlockId = -1;
     private String cachedFloorBlockName = "";
 
@@ -29,6 +36,13 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         super(PacketListenerPriority.NORMAL);
         this.config = config;
         this.logger = Logger.getLogger("SubChunkCuller");
+    }
+
+    public void clearCache() {
+        emptySectionCache.clear();
+        fakeFloorSectionCache.clear();
+        cachedFloorBlockId = -1;
+        cachedFloorBlockName = "";
     }
 
     private int getFloorBlockId() {
@@ -70,7 +84,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             return;
         }
 
-        // Always prioritize the player's true live altitude on join & packet send
         int currentLiveSection = player.getLocation().getBlockY() >> 4;
         Integer playerSectionY = Main.VIEWER_SECTION_Y.get(player.getUniqueId());
 
@@ -99,6 +112,9 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         int fakeFloorSectionY = cutoffSection - 1;
         int floorBlockId = fakeFloorEnabled ? getFloorBlockId() : 0;
 
+        BaseChunk emptyTemplate = getEmptySection(clientVersion);
+        BaseChunk floorTemplate = fakeFloorEnabled ? getFakeFloorSection(floorBlockId, clientVersion) : emptyTemplate;
+
         int strippedCount = 0;
         for (int i = 0; i < chunks.length; i++) {
             int actualSectionY = minSection + i;
@@ -107,11 +123,11 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             }
 
             if (fakeFloorEnabled && actualSectionY == fakeFloorSectionY) {
-                chunks[i] = buildFakeFloorSection(floorBlockId, clientVersion);
+                chunks[i] = floorTemplate;
                 strippedCount++;
             } else {
                 if (!isEmptySection(chunks[i])) {
-                    chunks[i] = buildEmptySection(clientVersion);
+                    chunks[i] = emptyTemplate;
                     strippedCount++;
                 }
             }
@@ -175,21 +191,26 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         return chunk == null;
     }
 
-    private BaseChunk buildEmptySection(ClientVersion clientVersion) {
-        Chunk_v1_18 section = new Chunk_v1_18();
-        section.set(0, 0, 0, 0);
-        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
-        return section;
+    private BaseChunk getEmptySection(ClientVersion clientVersion) {
+        return emptySectionCache.computeIfAbsent(clientVersion, v -> {
+            Chunk_v1_18 section = new Chunk_v1_18();
+            section.set(0, 0, 0, 0);
+            section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(v));
+            return section;
+        });
     }
 
-    private BaseChunk buildFakeFloorSection(int blockStateId, ClientVersion clientVersion) {
-        Chunk_v1_18 section = new Chunk_v1_18();
-        for (int x = 0; x < 16; x++) {
-            for (int z = 0; z < 16; z++) {
-                section.set(x, 15, z, blockStateId);
+    private BaseChunk getFakeFloorSection(int blockStateId, ClientVersion clientVersion) {
+        long key = (((long) blockStateId) << 32) | (clientVersion != null ? clientVersion.ordinal() : 0L);
+        return fakeFloorSectionCache.computeIfAbsent(key, k -> {
+            Chunk_v1_18 section = new Chunk_v1_18();
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    section.set(x, 15, z, blockStateId);
+                }
             }
-        }
-        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
-        return section;
+            section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+            return section;
+        });
     }
 }
