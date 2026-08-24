@@ -15,6 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class Main extends JavaPlugin {
 
     public static final Map<UUID, Integer> VIEWER_SECTION_Y = new ConcurrentHashMap<>();
+    
+    // Tracks which players were hidden explicitly by our plugin
+    private static final Map<UUID, java.util.Set<UUID>> CULLED_PLAYERS = new ConcurrentHashMap<>();
 
     private ConfigManager configManager;
     private ChunkRefreshListener chunkRefreshListener;
@@ -23,6 +26,26 @@ public final class Main extends JavaPlugin {
     private BlockUpdateListener blockUpdateListener;
     private EntityTrackerTask trackerRunnable;
     private BukkitTask entityTrackerTask;
+
+    public static void addCulledPlayer(UUID viewer, UUID target) {
+        CULLED_PLAYERS.computeIfAbsent(viewer, k -> java.util.concurrent.ConcurrentHashMap.newKeySet()).add(target);
+    }
+
+    public static void removeCulledPlayer(UUID viewer, UUID target) {
+        java.util.Set<UUID> targets = CULLED_PLAYERS.get(viewer);
+        if (targets != null) {
+            targets.remove(target);
+        }
+    }
+
+    public static boolean isPlayerCulledByUs(UUID viewer, UUID target) {
+        java.util.Set<UUID> targets = CULLED_PLAYERS.get(viewer);
+        return targets != null && targets.contains(target);
+    }
+
+    public static void clearCulledForViewer(UUID viewer) {
+        CULLED_PLAYERS.remove(viewer);
+    }
 
     @Override
     public void onLoad() {
