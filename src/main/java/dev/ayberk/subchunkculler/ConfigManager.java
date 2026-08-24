@@ -40,7 +40,6 @@ public final class ConfigManager implements Listener {
     private volatile boolean hideMisc;
     private volatile boolean bypassNpcs;
     private volatile boolean bypassHolograms;
-    private volatile boolean dampenUndergroundSounds;
 
     private final Map<String, Integer> worldMinSection = new ConcurrentHashMap<>();
 
@@ -83,7 +82,6 @@ public final class ConfigManager implements Listener {
         this.hideMisc = cfg.getBoolean("entity-culler.targets.hide-misc", true);
         this.bypassNpcs = cfg.getBoolean("entity-culler.targets.bypass-npcs", true);
         this.bypassHolograms = cfg.getBoolean("entity-culler.targets.bypass-holograms", true);
-        this.dampenUndergroundSounds = cfg.getBoolean("entity-culler.dampen-underground-sounds", true);
 
         worldMinSection.clear();
         for (World world : plugin.getServer().getWorlds()) {
@@ -152,21 +150,21 @@ public final class ConfigManager implements Listener {
 
     /**
      * Computes the vertical cutoff section.
+     * All sections with sectionY < cutoffSection will be culled.
+     * All sections with sectionY >= cutoffSection will be kept visible.
      *
-     * Logic:
-     * - dynamicCutoff = playerSectionY - subChunksBelow
-     *   (how far below the player we allow visibility)
-     * - absoluteCutoffSection = absolute-cutoff-y >> 4
-     *   (the absolute floor: never cull ABOVE this section)
+     * - dynamicCutoff = playerSectionY - subChunksBelow (sections below player to keep)
+     * - absoluteCutoffSection = absoluteCutoffY >> 4 (highest section allowed to start culling)
      *
-     * We take Math.max: whichever is HIGHER (less aggressive) wins.
-     * - Surface player Y=80, section=5, dynamic=3, absolute=0 → max(3,0)=3 → cull below section 3 (Y=48). Good.
-     * - Underground player Y=-20, section=-2, dynamic=-4, absolute=0 → max(-4,0)=0 → cull below section 0 (Y=0). Good.
-     * - Deep underground player Y=-50, section=-4, dynamic=-6, absolute=0 → max(-6,0)=0 → cull below Y=0. Good.
+     * Math.min(dynamicCutoff, absoluteCutoffSection) ensures:
+     * - When player is high up (e.g. Y=80, dynamic=3, absolute=0):
+     *   cutoff = 0 -> only deepslate/caves below Y=0 are culled; full surface down to Y=0 remains visible.
+     * - When player goes underground (e.g. Y=-20, dynamic=-4, absolute=0):
+     *   cutoff = -4 -> cave around the player remains 100% visible; only deep void below Y=-48 is culled.
      */
     public int computeCutoffSection(int playerSectionY) {
         int dynamicCutoff = playerSectionY - subChunksBelow;
-        return Math.max(dynamicCutoff, absoluteCutoffSection);
+        return Math.min(dynamicCutoff, absoluteCutoffSection);
     }
 
     public boolean isFakeFloorEnabled() {
@@ -211,9 +209,5 @@ public final class ConfigManager implements Listener {
 
     public boolean isBypassHolograms() {
         return bypassHolograms;
-    }
-
-    public boolean isDampenUndergroundSounds() {
-        return dampenUndergroundSounds;
     }
 }
