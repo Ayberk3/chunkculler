@@ -36,12 +36,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.0
-          name: "SubChunkCuller v1.4.0 (Anti-Void Fall & Tab-List Fix Release)"
+          tag_name: v1.4.1
+          name: "SubChunkCuller v1.4.1 (Bulletproof Compatibility Release)"
           body: |
-            ## 🚀 SubChunkCuller v1.4.0 (Mega Fix: Void Fall & Tab List)
+            ## 🚀 SubChunkCuller v1.4.1 (Bulletproof Compatibility)
 
-            ### 👑 Yenilikler & Çözülen Kritik Hatalar:
+            ### 👑 Yenilikler & Muhtemel Hata (Edge Case) Çözümleri:
+            - **👻 Vanish Plugin Uyumluluğu:** Tab listesini koruyan sistem, artık Essentials, PremiumVanish vb. eklentilerle %100 uyumlu! Sistemimiz sadece *kendi gizlediği* oyuncuların Tab listesinde kalmasını sağlar. Adminler vanish kullandığında kusursuz çalışır.
+            - **👥 Kapsamlı Paket Engelleme:** `SPAWN_ENTITY` yanına 1.18.x ve 1.19.x sürümleri için `SPAWN_PLAYER`, `SPAWN_ENTITY_LIVING`, `SPAWN_ENTITY_EXPERIENCE_ORB`, `SPAWN_ENTITY_PAINTING` gibi tüm olasılıklar eklendi.
+            - **📋 PLAYER_INFO_UPDATE Desteği:** 1.19.3+ sürümlerde tab listesi güncellemelerinde `UPDATE_LISTED` aksiyonu kullanılarak oyuncuların kaybolma riski tamamen sıfırlandı.
             - **🪂 Yüksekten Düşerken Boşlukta Kalma (Void Bug) Çözüldü:**
               - Debounce gecikmesi Y-ekseni hareketlerinde sıfırlandı.
               - `ChunkRefreshListener` içine **3D Uzaklık Sıralayıcı** eklendi; oyuncunun içinde bulunduğu merkez chunk 1. tickte öncelikli olarak gönderilir.
