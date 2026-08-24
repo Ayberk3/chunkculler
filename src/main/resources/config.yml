@@ -8,9 +8,10 @@
 # Example: If set to 2, 2 sections below the player are kept intact.
 sub-chunks-below: 2
 
-# Absolute cutoff block Y level. Sections above this Y level are NEVER culled.
-# When player is on the surface (e.g. Y=80), culling will start at this Y level (e.g. Y=0).
+# Absolute cutoff block Y level. Sections BELOW this Y level may be culled.
+# When player is on the surface (e.g. Y=80), culling starts at this boundary.
 # When player goes underground below this Y level, relative sub-chunks-below takes over.
+# Set to a very low value (e.g. -64) to disable absolute cutoff and only use relative.
 absolute-cutoff-y: 0
 
 # Worlds where SubChunkCuller is enabled
@@ -25,23 +26,29 @@ refresh-cooldown-ms: 250
 refresh-debounce-ticks: 4
 refresh-chunks-per-tick: 12
 
-# Fake floor (generates a natural deepslate bedrock floor at cutoff boundary)
+# Fake floor (generates a natural deepslate floor at cutoff boundary)
 fake-floor:
   enabled: true
   block: "minecraft:deepslate"
 
-# Filter block updates below cutoff
+# Filter block updates below cutoff (prevents ghost block flickers)
 block-update-filter:
   enabled: true
 
 # 2. Zero-Leak Vertical Entity Anti-ESP Settings
 entity-culler:
   enabled: true
-  # Scan interval in ticks (2 ticks = 0.1s)
-  check-interval-ticks: 2
+  # Scan interval in ticks (2 ticks = 0.1s, 4 ticks = 0.2s)
+  check-interval-ticks: 4
 
-  # Dampen deep underground sound packets (Sound ESP prevention)
-  dampen-underground-sounds: true
+  # Entity type filters (true = hide this type when below cutoff)
+  targets:
+    hide-players: true
+    hide-monsters: true
+    hide-animals: false
+    hide-misc: true
+    bypass-npcs: true
+    bypass-holograms: true
 
 # Console debugging
 debug-mode: false
