@@ -5,7 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.List;
+import java.util.Collection;
 
 public final class EntityTrackerTask extends BukkitRunnable {
 
@@ -31,7 +31,6 @@ public final class EntityTrackerTask extends BukkitRunnable {
             return;
         }
 
-        // BUG-6 FIX: bypass permission check
         if (viewer.hasPermission("subchunkculler.bypass")) {
             return;
         }
@@ -50,38 +49,21 @@ public final class EntityTrackerTask extends BukkitRunnable {
         int cutoffSection = config.computeCutoffSection(viewerSectionY);
         int cutoffBlockY = cutoffSection << 4;
 
-        // BUG-5 FIX: Use getWorld().getEntities() with manual distance check
-        // instead of getNearbyEntities() which creates a new ArrayList+AABB every call.
-        // We iterate the world entity list (cached by Paper, zero-alloc) and check distance manually.
-        List<Entity> worldEntities = viewer.getWorld().getEntities();
-        double viewerX = viewerLoc.getX();
-        double viewerZ = viewerLoc.getZ();
+        // Paper spatial search: 64 blocks horizontal, 96 vertical
+        Collection<Entity> nearbyEntities = viewer.getWorld().getNearbyEntities(
+                viewerLoc, 64.0, 96.0, 64.0, target -> target != null && target.isValid() && target.getEntityId() != viewer.getEntityId()
+        );
 
-        for (Entity target : worldEntities) {
-            if (target == null || !target.isValid() || target.getEntityId() == viewer.getEntityId()) {
-                continue;
-            }
-
-            // Skip projectiles
+        for (Entity target : nearbyEntities) {
             if (target instanceof Projectile) {
                 continue;
             }
 
-            // BUG-7 FIX: Respect entity type filter config
             if (!isTargetApplicable(target, config)) {
                 continue;
             }
 
-            Location targetLoc = target.getLocation();
-
-            // Manual distance check instead of AABB (64 block horizontal radius)
-            double dx = targetLoc.getX() - viewerX;
-            double dz = targetLoc.getZ() - viewerZ;
-            if (dx * dx + dz * dz > 4096.0) { // 64^2
-                continue;
-            }
-
-            double targetY = targetLoc.getY();
+            double targetY = target.getLocation().getY();
 
             if (targetY < cutoffBlockY) {
                 hideEntityRecursively(viewer, target);
@@ -91,9 +73,6 @@ public final class EntityTrackerTask extends BukkitRunnable {
         }
     }
 
-    /**
-     * BUG-7 FIX: Check entity type against config before hiding.
-     */
     private boolean isTargetApplicable(Entity entity, ConfigManager config) {
         // NPC bypass (Citizens, FancyNpcs, etc.)
         if (config.isBypassNpcs()) {
@@ -113,7 +92,6 @@ public final class EntityTrackerTask extends BukkitRunnable {
             }
         }
 
-        // Skip falling blocks, dropped items
         if (entity instanceof FallingBlock || entity instanceof Item) {
             return false;
         }
