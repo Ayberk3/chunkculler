@@ -4,7 +4,6 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSoundEffect;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
 import org.bukkit.entity.Player;
 
@@ -29,7 +28,11 @@ public final class EntityPacketListener extends PacketListenerAbstract {
             return;
         }
 
-        UUID viewerUUID = player.getUniqueId();
+        // BUG-6 FIX: bypass permission check
+        if (player.hasPermission("subchunkculler.bypass")) {
+            return;
+        }
+
         var packetType = event.getPacketType();
         ConfigManager config = plugin.getConfigManager();
 
@@ -37,46 +40,24 @@ public final class EntityPacketListener extends PacketListenerAbstract {
             return;
         }
 
+        UUID viewerUUID = player.getUniqueId();
         Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewerUUID);
         if (viewerSectionY == null) {
             viewerSectionY = player.getLocation().getBlockY() >> 4;
         }
         int cutoffBlockY = config.computeCutoffSection(viewerSectionY) << 4;
 
+        // Block entity spawn packets below cutoff
         if (packetType == PacketType.Play.Server.SPAWN_ENTITY) {
             WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
             double entityY = packet.getPosition().getY();
 
             if (entityY < cutoffBlockY) {
                 event.setCancelled(true);
-                return;
-            }
-        } else if (plugin.getConfigManager().isDampenUndergroundSounds() && packetType == PacketType.Play.Server.SOUND_EFFECT) {
-            try {
-                WrapperPlayServerSoundEffect sound = new WrapperPlayServerSoundEffect(event);
-                java.lang.reflect.Method m = null;
-                for (java.lang.reflect.Method method : sound.getClass().getMethods()) {
-                    if (method.getName().equals("getEffectPosition") || method.getName().equals("getFixedPosition") || method.getName().equals("getPosition")) {
-                        m = method;
-                        break;
-                    }
-                }
-                if (m != null) {
-                    Object posObj = m.invoke(sound);
-                    if (posObj != null) {
-                        double soundY = 0;
-                        if (posObj instanceof com.github.retrooper.packetevents.util.Vector3i v3i) {
-                            soundY = v3i.getY();
-                        } else if (posObj instanceof com.github.retrooper.packetevents.util.Vector3d v3d) {
-                            soundY = v3d.getY();
-                        }
-                        if (soundY < cutoffBlockY) {
-                            event.setCancelled(true);
-                        }
-                    }
-                }
-            } catch (Throwable ignored) {
             }
         }
+        // BUG-4 FIX: Removed per-packet reflection for sound dampening.
+        // Sound dampening is low-value and the reflection overhead per sound packet
+        // was destroying Netty thread performance. Removed entirely.
     }
 }
