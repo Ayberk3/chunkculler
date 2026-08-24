@@ -15,8 +15,6 @@ import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 public final class ChunkPacketListener extends PacketListenerAbstract {
@@ -24,10 +22,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
     private static final TileEntity[] EMPTY_TILE_ENTITIES = new TileEntity[0];
     private final ConfigManager config;
     private final Logger logger;
-
-    // Ultra-fast zero-allocation section templates cached per ClientVersion
-    private final Map<ClientVersion, BaseChunk> emptySectionCache = new ConcurrentHashMap<>();
-    private final Map<Long, BaseChunk> fakeFloorSectionCache = new ConcurrentHashMap<>();
 
     private int cachedFloorBlockId = -1;
     private String cachedFloorBlockName = "";
@@ -39,8 +33,6 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
     }
 
     public void clearCache() {
-        emptySectionCache.clear();
-        fakeFloorSectionCache.clear();
         cachedFloorBlockId = -1;
         cachedFloorBlockName = "";
     }
@@ -79,6 +71,11 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             return;
         }
 
+        // BUG-6 FIX: bypass permission check
+        if (player.hasPermission("subchunkculler.bypass")) {
+            return;
+        }
+
         String worldName = player.getWorld().getName();
         if (!config.isWorldEnabled(worldName)) {
             return;
@@ -112,9 +109,7 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         int fakeFloorSectionY = cutoffSection - 1;
         int floorBlockId = fakeFloorEnabled ? getFloorBlockId() : 0;
 
-        BaseChunk emptyTemplate = getEmptySection(clientVersion);
-        BaseChunk floorTemplate = fakeFloorEnabled ? getFakeFloorSection(floorBlockId, clientVersion) : emptyTemplate;
-
+        // BUG-2 FIX: Create fresh sections per-packet instead of sharing mutable singletons
         int strippedCount = 0;
         for (int i = 0; i < chunks.length; i++) {
             int actualSectionY = minSection + i;
@@ -123,11 +118,11 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
             }
 
             if (fakeFloorEnabled && actualSectionY == fakeFloorSectionY) {
-                chunks[i] = floorTemplate;
+                chunks[i] = buildFakeFloorSection(floorBlockId, clientVersion);
                 strippedCount++;
             } else {
-                if (!isEmptySection(chunks[i])) {
-                    chunks[i] = emptyTemplate;
+                if (chunks[i] != null) {
+                    chunks[i] = buildEmptySection(clientVersion);
                     strippedCount++;
                 }
             }
@@ -187,30 +182,21 @@ public final class ChunkPacketListener extends PacketListenerAbstract {
         return removed;
     }
 
-    private boolean isEmptySection(BaseChunk chunk) {
-        return chunk == null;
+    private BaseChunk buildEmptySection(ClientVersion clientVersion) {
+        Chunk_v1_18 section = new Chunk_v1_18();
+        section.set(0, 0, 0, 0);
+        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+        return section;
     }
 
-    private BaseChunk getEmptySection(ClientVersion clientVersion) {
-        return emptySectionCache.computeIfAbsent(clientVersion, v -> {
-            Chunk_v1_18 section = new Chunk_v1_18();
-            section.set(0, 0, 0, 0);
-            section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(v));
-            return section;
-        });
-    }
-
-    private BaseChunk getFakeFloorSection(int blockStateId, ClientVersion clientVersion) {
-        long key = (((long) blockStateId) << 32) | (clientVersion != null ? clientVersion.ordinal() : 0L);
-        return fakeFloorSectionCache.computeIfAbsent(key, k -> {
-            Chunk_v1_18 section = new Chunk_v1_18();
-            for (int x = 0; x < 16; x++) {
-                for (int z = 0; z < 16; z++) {
-                    section.set(x, 15, z, blockStateId);
-                }
+    private BaseChunk buildFakeFloorSection(int blockStateId, ClientVersion clientVersion) {
+        Chunk_v1_18 section = new Chunk_v1_18();
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                section.set(x, 15, z, blockStateId);
             }
-            section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
-            return section;
-        });
+        }
+        section.getBiomeData().set(0, 0, 0, Biomes.PLAINS.getId(clientVersion));
+        return section;
     }
 }
