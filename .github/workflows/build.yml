@@ -36,17 +36,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.0
-          name: "SubChunkCuller v1.1.0 (Full Fake Deepslate Floor & Seamless Movement)"
+          tag_name: v1.1.1
+          name: "SubChunkCuller v1.1.1 (Instant Underground Join & Zero-Lag Fix)"
           body: |
-            ## 🚀 SubChunkCuller v1.1.0 (Fake Deepslate Floor Release)
+            ## 🚀 SubChunkCuller v1.1.1 (Instant Underground Join Release)
 
-            ### 💎 Yeni Özellikler & Çözümler:
-            - **SubChunkCuller-1.1.0.jar:** Jar ismi güncel sürüm numarasıyla tam eşitlendi.
-            - **100% Kararlı ve Çökmesiz Fake Deepslate Floor:** Sınır kesim yüksekliğinin en alt katmanına kesintisiz, pürüzsüz sahte deepslate zemini yerleştirilir. Hileciler/Freecam aşağı baktığında sonsuz boşluk yerine doğal bir deepslate katmanı görür.
-            - **Saf Dikey Gizleme (Sıfır Yatay Kesinti):** Oyuncunun bulunduğu Y seviyesi (örneğin Y = -5) ve yukarısı, oyuncunun görüş mesafesindeki (6-12 chunk) tüm yönlerde %100 eksiksiz ve açık kalır.
-            - **ChunkResender NMS Motoru:** Yatay ve dikey hareketlerde chunklar anında istemciye basılır.
-            - **Derinlemesine Binek & Yolcu Gizleme:** Vagon, bot ve binekler tüm yolcularıyla birlikte Paper resmi API'si ile gizlenir.
-            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme.
+            ### 🎯 En Kritik Düzeltmeler:
+            - **Yerin Altında Doğunca 30 Saniye Takılı Kalma/Yüklenmeme Sorunu Çözüldü:** `PlayerSpawnLocationEvent` ve canlı `getLocation()` senkronizasyonu eklendi. Oyuncu yer altında doğduğu ilk saniyeden itibaren etrafındaki tüm mağaralar ve zemin sıfır gecikmeyle yüklenir.
+            - **SubChunkCuller-1.1.1.jar:** Jar ismi sürümle birebir eşleştirildi.
+            - **100% Kararlı Fake Deepslate Zemin:** Kesinti sınırının en altında pürüzsüz Deepslate tabakası oluşturulur.
+            - **Saf Dikey Gizleme (Sıfır Yatay Kesinti):** Oyuncunun bulunduğu Y seviyesinde yatay görüş (6-12 chunk) %100 açık kalır.
+            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty paket filtreleme.
           files: target/SubChunkCuller-*.jar
           token: ${{ secrets.GITHUB_TOKEN }}
