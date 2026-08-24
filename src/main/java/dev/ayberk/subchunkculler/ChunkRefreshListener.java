@@ -106,6 +106,7 @@ public final class ChunkRefreshListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         Main.VIEWER_SECTION_Y.remove(id);
+        Main.clearCulledForViewer(id);
         refreshQueue.removeIf(entry -> entry.player.getUniqueId().equals(id));
     }
 
