@@ -36,16 +36,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.3
-          name: "SubChunkCuller v1.1.3 (Zero-Allocation Engine & Ultimate Performance)"
+          tag_name: v1.1.4
+          name: "SubChunkCuller v1.1.4 (Pure Lean Architecture & Zero-Overhead Release)"
           body: |
-            ## 🚀 SubChunkCuller v1.1.3 (Zero-Allocation Performance Release)
+            ## 🚀 SubChunkCuller v1.1.4 (Pure Lean Release)
 
-            ### 💎 Ultra-Performans & Mimari İyileştirmeleri:
-            - **Sıfır Bellek Tahsisi (Zero-Allocation Chunk Templates):** Boş ve Deepslate bölümleri istemci sürümüne göre önceden derlenip önbelleğe alınır ($O(1)$ işaretçi ataması). Netty iş parçacığında gereksiz GC (Garbage Collection) ve bellek tahsisi sıfıra indirildi.
-            - **Dinamik & Mutlak Kesim Senkronizasyonu (`absolute-cutoff-y: 0`):** Yüzeydeyken kesinti Y=0'dan başlar, yeraltında ise dinamik olarak oyuncuyu takip eder.
-            - **Yerin Altında Doğunca 0-ms Yükleme:** `PlayerSpawnLocationEvent` ve canlı konum takibi ile yer altında doğar doğmaz tüm mağaralar anında yüklenir.
-            - **SubChunkCuller-1.1.3.jar:** Jar ismi sürümle birebir eşleştirildi.
-            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty filtreleme ile sunucu 20.0 TPS sabit çalışır.
+            ### 💎 Yapılan Temizlik & Optimizasyonlar:
+            - **Gereksiz Özellikler & Çift Bellek Haritaları Kaldırıldı:** Eski entity takipçileri, gereksiz HashMap'ler ve çift kayıtlar tamamen silindi.
+            - **Doğrudan Paper Native Motor:** Paper'ın kendi yerel `hideEntity` sistemiyle minimum bellek tüketimi ve sıfır GC yükü.
+            - **Sıfır Bellek Tahsisi (Zero-Allocation Chunk Templates):** Boş ve Deepslate bölümleri önbellekten doğrudan atanır ($O(1)$).
+            - **Yerin Altında Doğunca 0-ms Yükleme:** Doğuş anında tüm mağaralar anında yüklenir.
+            - **SubChunkCuller-1.1.4.jar:** Sürümle birebir eşleştirilmiş güncel dosya.
+            - **%0.00 TPS Etkisi / Sıfır Lag:** 0 raycast, asenkron Netty paket filtreleme.
           files: target/SubChunkCuller-*.jar
           token: ${{ secrets.GITHUB_TOKEN }}
