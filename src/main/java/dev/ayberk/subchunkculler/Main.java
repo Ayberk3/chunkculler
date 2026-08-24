@@ -17,7 +17,6 @@ public final class Main extends JavaPlugin {
 
     private ConfigManager configManager;
     private ChunkRefreshListener chunkRefreshListener;
-    private EntityTrackingManager entityTrackingManager;
     private EntityPacketListener entityPacketListener;
     private ChunkPacketListener chunkPacketListener;
     private BlockUpdateListener blockUpdateListener;
@@ -49,19 +48,17 @@ public final class Main extends JavaPlugin {
         PacketEvents.getAPI().getEventManager().registerListener(chunkPacketListener);
         PacketEvents.getAPI().getEventManager().registerListener(blockUpdateListener);
 
-        // 3. Chunk Refresh Listener
+        // 3. Chunk Refresh & Player Lifecycle Listener
         this.chunkRefreshListener = new ChunkRefreshListener(this, configManager);
         getServer().getPluginManager().registerEvents(chunkRefreshListener, this);
         chunkRefreshListener.startDrainTask();
 
-        // 4. Entity Tracking & Zero-Leak Anti-ESP
-        this.entityTrackingManager = new EntityTrackingManager(this);
+        // 4. Entity Packet Listener & Native Entity Tracker
         this.entityPacketListener = new EntityPacketListener(this);
         PacketEvents.getAPI().getEventManager().registerListener(entityPacketListener);
-        getServer().getPluginManager().registerEvents(new EventListener(this), this);
         startEntityTrackerTask();
 
-        // 5. Commands
+        // 5. Admin Commands
         ReloadCommand reloadCommand = new ReloadCommand(this, configManager);
         PluginCommand command = getCommand("subchunkculler");
         if (command != null) {
@@ -74,8 +71,6 @@ public final class Main extends JavaPlugin {
         }
 
         getLogger().info("SubChunkCuller v" + getDescription().getVersion() + " successfully enabled!");
-        getLogger().info("SubChunks Below: " + configManager.getSubChunksBelow() +
-                ", Dynamic Void Entity Culling active.");
     }
 
     public void startEntityTrackerTask() {
@@ -104,6 +99,7 @@ public final class Main extends JavaPlugin {
             entityTrackerTask.cancel();
         }
         if (chunkPacketListener != null) {
+            chunkPacketListener.clearCache();
             PacketEvents.getAPI().getEventManager().unregisterListener(chunkPacketListener);
         }
         if (blockUpdateListener != null) {
@@ -111,9 +107,6 @@ public final class Main extends JavaPlugin {
         }
         if (entityPacketListener != null) {
             PacketEvents.getAPI().getEventManager().unregisterListener(entityPacketListener);
-        }
-        if (entityTrackingManager != null) {
-            entityTrackingManager.clearAll();
         }
 
         PacketEvents.getAPI().terminate();
@@ -123,9 +116,5 @@ public final class Main extends JavaPlugin {
 
     public ConfigManager getConfigManager() {
         return configManager;
-    }
-
-    public EntityTrackingManager getEntityTrackingManager() {
-        return entityTrackingManager;
     }
 }
