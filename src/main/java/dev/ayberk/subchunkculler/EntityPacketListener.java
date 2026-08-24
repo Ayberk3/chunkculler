@@ -58,6 +58,19 @@ public final class EntityPacketListener extends PacketListenerAbstract {
                 }
             }
             return; // We only intercept Tab actions here
+        } else if (packetType == PacketType.Play.Server.PLAYER_INFO_UPDATE) {
+            com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate infoUpdate = new com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate(event);
+            if (infoUpdate.getActions().contains(com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate.Action.UPDATE_LISTED)) {
+                for (com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate.PlayerInfo info : infoUpdate.getEntries()) {
+                    if (!info.isListed() && isCulledOnlinePlayer(player, info.getProfileId(), config)) {
+                        // If it's a batch packet, canceling it outright might cancel other valid updates,
+                        // but Bukkit rarely batches different players' listed updates.
+                        event.setCancelled(true);
+                        break;
+                    }
+                }
+            }
+            return;
         }
 
         if (player.hasPermission("subchunkculler.bypass")) {
@@ -69,7 +82,12 @@ public final class EntityPacketListener extends PacketListenerAbstract {
         }
 
         // 2. Entity Spawn Blocker
-        if (packetType == PacketType.Play.Server.SPAWN_ENTITY) {
+        if (packetType == PacketType.Play.Server.SPAWN_ENTITY ||
+            packetType == PacketType.Play.Server.SPAWN_PLAYER ||
+            packetType == PacketType.Play.Server.SPAWN_ENTITY_LIVING ||
+            packetType == PacketType.Play.Server.SPAWN_ENTITY_EXPERIENCE_ORB ||
+            packetType == PacketType.Play.Server.SPAWN_ENTITY_PAINTING) {
+            
             UUID viewerUUID = player.getUniqueId();
             Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewerUUID);
             if (viewerSectionY == null) {
@@ -77,8 +95,26 @@ public final class EntityPacketListener extends PacketListenerAbstract {
             }
             int cutoffBlockY = config.computeCutoffSection(viewerSectionY) << 4;
             
-            WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
-            double entityY = packet.getPosition().getY();
+            double entityY = 0;
+            // WrapperPlayServerSpawnEntity in modern PacketEvents abstracts most of these, but we safely get the Y.
+            // Some legacy wrappers might be needed if they are split, but modern WrapperPlayServerSpawnEntity works for all these types if mapped correctly.
+            // If they are mapped as specific wrappers in very old versions, this could throw an exception, so we wrap it:
+            try {
+                if (packetType == PacketType.Play.Server.SPAWN_PLAYER) {
+                    entityY = new com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnPlayer(event).getPosition().getY();
+                } else if (packetType == PacketType.Play.Server.SPAWN_ENTITY_LIVING) {
+                    entityY = new com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnLivingEntity(event).getPosition().getY();
+                } else if (packetType == PacketType.Play.Server.SPAWN_ENTITY_EXPERIENCE_ORB) {
+                    entityY = new com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnExperienceOrb(event).getPosition().getY();
+                } else if (packetType == PacketType.Play.Server.SPAWN_ENTITY_PAINTING) {
+                    entityY = new com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnPainting(event).getPosition().getY();
+                } else {
+                    entityY = new WrapperPlayServerSpawnEntity(event).getPosition().getY();
+                }
+            } catch (Exception e) {
+                // Fallback if wrapper parsing fails for a weird version
+                return;
+            }
 
             if (entityY < cutoffBlockY) {
                 event.setCancelled(true);
@@ -87,25 +123,9 @@ public final class EntityPacketListener extends PacketListenerAbstract {
     }
 
     /**
-     * Checks if the target UUID belongs to an online player that was hidden *by us* (below cutoff).
+     * Checks if the target UUID belongs to an online player that was explicitly hidden *by us*.
      */
     private boolean isCulledOnlinePlayer(Player viewer, UUID targetUUID, ConfigManager config) {
-        Player target = Bukkit.getPlayer(targetUUID);
-        
-        // If they are online and the viewer cannot see them (hideEntity was used)
-        if (target != null && target.isOnline() && !viewer.canSee(target)) {
-            
-            // Confirm they are actually below our cutoff (so it was our plugin that hid them, not a vanish plugin)
-            Integer viewerSectionY = Main.VIEWER_SECTION_Y.get(viewer.getUniqueId());
-            if (viewerSectionY == null) {
-                viewerSectionY = viewer.getLocation().getBlockY() >> 4;
-            }
-            int cutoffBlockY = config.computeCutoffSection(viewerSectionY) << 4;
-            
-            if (target.getLocation().getY() < cutoffBlockY) {
-                return true; // We protect them from being removed from the Tab list!
-            }
-        }
-        return false;
+        return Main.isPlayerCulledByUs(viewer.getUniqueId(), targetUUID);
     }
 }
